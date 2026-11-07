@@ -56,7 +56,10 @@ class TextRenderer(Renderer):
 
 
 class WindowRenderer(Renderer):
-    """Live matplotlib window (needs a display / interactive backend)."""
+    """Live matplotlib window shown *while* episodes run (used to peek at training episodes).
+
+    For finished agents ``make_renderer("window")`` returns the interactive
+    ``viewer.ReplayWindowRenderer`` instead (pause / replay / speed control)."""
 
     def __init__(self, delay: float = 0.08, every: int = 1, cell: int = 24, **_):
         import matplotlib.pyplot as plt
@@ -129,14 +132,20 @@ class GifRenderer(Renderer):
 
 
 def make_renderer(kind: str, *, delay: float = 0.08, every: int = 1, color: bool = True,
-                  views: bool = True, out_dir: str = "gifs", prefix: str = "episode") -> Renderer:
+                  views: bool = True, out_dir: str = "gifs", prefix: str = "episode",
+                  live: bool = False) -> Renderer:
+    """``live=True`` selects the plain live window for ``"window"`` (training peeks); otherwise
+    sessions are recorded and opened in the interactive replay window when they are done."""
     kind = (kind or "none").lower()
     if kind in ("none", "off", ""):
         return NullRenderer()
     if kind == "text":
         return TextRenderer(delay, every, color, views)
     if kind in ("window", "mpl", "matplotlib"):
-        return WindowRenderer(delay, every)
+        if live:
+            return WindowRenderer(delay, every)
+        from .viewer import ReplayWindowRenderer
+        return ReplayWindowRenderer(delay, every, fallback_dir=out_dir, prefix=prefix)
     if kind == "gif":
         return GifRenderer(out_dir, delay, every, prefix=prefix)
     raise ValueError(f"unknown visual mode '{kind}' (none | text | window | gif)")

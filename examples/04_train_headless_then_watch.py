@@ -2,13 +2,14 @@
 
 Ways to look at an agent (``eval_visual`` / ``train_visual``):
     "text"    ASCII map + each agent's observation window, in the terminal
-    "window"  live matplotlib window (needs a display)
+    "window"  separate replay window with pause / replay / speed controls (needs a display;
+              falls back to GIFs without one)
     "gif"     one animated GIF per session (no display needed)
 
 Training stays headless (train_visual="none"); set train_visual_every=N to peek at every
 N-th training episode. The trained agent is saved, so you can come back later:
 
-    python -m vdn_lab play runs/<run_dir> --sessions 3 --visual text
+    python -m vdn_lab play runs/<run_dir> --sessions 3          # replay window
 """
 from _common import QUICK, budget, hp
 from vdn_lab.experiment import Experiment, ExperimentConfig
@@ -21,7 +22,7 @@ cfg = ExperimentConfig(
     train_steps=steps, eval_every=steps // 5,
     train_visual="none",                      # headless training
     final_eval_sessions=3,                    # then 3 sessions with the trained agent ...
-    eval_visual="gif" if QUICK else "text",   # ... shown as ASCII (or "gif" / "window")
+    eval_visual="gif" if QUICK else "window", # ... in the replay window (or "text" / "gif")
     visual_delay=0.05, visual_every=2,        # seconds per frame, render every 2nd step
 )
 Experiment(cfg).run()

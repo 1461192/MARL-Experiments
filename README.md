@@ -11,7 +11,7 @@ vdn_lab/
                 independent.py  centralized.py  baselines.py  replay.py
   experiment/   config.py  runner.py  benchmark.py  render.py
   cli.py        python -m vdn_lab ...
-examples/       five runnable examples      tests/   pytest suite (40 tests)
+examples/       five runnable examples      tests/   pytest suite (43 tests)
 ```
 
 ## Install / run
@@ -19,11 +19,11 @@ examples/       five runnable examples      tests/   pytest suite (40 tests)
 ```bash
 pip install torch numpy pillow matplotlib pytest       # CPU torch is enough
 python -m vdn_lab list
-python -m vdn_lab watch --env switch --map single --episode-len 30     # random agents, ASCII view
+python -m vdn_lab watch --env switch --map single --episode-len 30     # random agents, replay window
 python -m vdn_lab train --env fetch --map open --agent vdn --steps 150000 \
        --episode-len 200 --lr 5e-4 --agent-kw eps_decay_steps=75000 warmup_steps=1000 target_update_every=100 \
-       --final-sessions 3 --eval-visual text
-python -m vdn_lab play runs/<run_dir> --sessions 3 --visual gif
+       --final-sessions 3 --eval-visual window
+python -m vdn_lab play runs/<run_dir> --sessions 3                     # opens the replay window
 pytest -q
 ```
 
@@ -67,6 +67,22 @@ maps can be passed as `layout=[...]`.
 `visual_color`, `visual_views`. Default is **headless training, then `final_eval_sessions` greedy
 sessions** with the finished agent (optionally rendered); `train_visual_every=N` peeks at every N-th
 training episode. Trained agents are saved to `<run_dir>/agent.pt` and replayed with `play`.
+
+**Replay window (`window`, the default for `play` / `watch`).** Sessions with a finished agent are
+recorded and then opened in a separate matplotlib window instead of being printed:
+
+| control | button / key |
+|---|---|
+| pause / resume | `play`/`pause` button, `space` |
+| replay the current session | `replay` button, `r` |
+| previous / next session | `prev` / `next` buttons, `p` / `n` (sessions auto-advance) |
+| replay speed (0.25x – 16x) | speed slider, `+` / `-`, `0` resets to 1x |
+| scrub / step frames | frame slider, `←` / `→` |
+
+Replays re-render the recorded game states, so they are exact and do not re-run the agent. The window
+needs an interactive matplotlib backend (e.g. TkAgg / QtAgg); without a display the sessions are saved
+as GIFs instead. During training, `train_visual="window"` still shows a simple live window, and `text`
+remains available for terminal output.
 
 ## Adding an algorithm
 
