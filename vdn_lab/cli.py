@@ -72,7 +72,7 @@ def _add_run_args(p: argparse.ArgumentParser) -> None:
     v.add_argument("--train-visual", default="none", choices=["none", "text", "window", "gif"])
     v.add_argument("--train-visual-every", type=int, default=0, help="render every N-th training episode")
     v.add_argument("--eval-visual", default="none", choices=["none", "text", "window", "gif"],
-                   help="how to show the final sessions")
+                   help="how to show the final sessions (window = replay window with pause / replay / speed)")
     _add_visual_opts(v)
 
 
@@ -160,7 +160,8 @@ def main(argv=None) -> None:
     _add_game_args(w)
     w.add_argument("--run", default=None, help="saved run directory to replay greedily")
     w.add_argument("--sessions", type=int, default=1)
-    w.add_argument("--eval-visual", default="text", choices=["text", "window", "gif"])
+    w.add_argument("--eval-visual", default="window", choices=["text", "window", "gif"],
+                   help="window = replay window with pause / replay / speed controls")
     w.add_argument("--seed", type=int, default=0)
     w.add_argument("--device", default="cpu")
     w.add_argument("--steps", type=int, default=0)
@@ -195,7 +196,8 @@ def main(argv=None) -> None:
     pl = sub.add_parser("play", help="run sessions of a saved run (no training)")
     pl.add_argument("run", help="run directory containing config.json and agent.pt")
     pl.add_argument("--sessions", type=int, default=3)
-    pl.add_argument("--visual", default="text", choices=["none", "text", "window", "gif"])
+    pl.add_argument("--visual", default="window", choices=["none", "text", "window", "gif"],
+                    help="window (default) = replay window with pause / replay / speed controls")
     pl.set_defaults(fn=cmd_play)
 
     a = p.parse_args(argv)

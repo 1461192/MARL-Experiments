@@ -112,15 +112,18 @@ class Experiment:
         self.cfg.save(d / "config.json")
         return d
 
-    def _renderer(self, kind: str, prefix: str) -> Renderer:
+    def _renderer(self, kind: str, prefix: str, live: bool = False) -> Renderer:
         c = self.cfg
         gif_dir = c.visual_dir or str((self.run_dir or Path(".")) / "gifs")
         return make_renderer(kind, delay=c.visual_delay, every=c.visual_every, color=c.visual_color,
-                             views=c.visual_views, out_dir=gif_dir, prefix=prefix)
+                             views=c.visual_views, out_dir=gif_dir, prefix=prefix, live=live)
 
     def evaluate(self, episodes: int, visual: str = "none", label: str = "eval",
                  explore: bool = False) -> Dict[str, Any]:
-        """Run ``episodes`` frozen-agent sessions (greedy by default) on the evaluation env."""
+        """Run ``episodes`` frozen-agent sessions (greedy by default) on the evaluation env.
+
+        With ``visual="window"`` the sessions are recorded and, once all have run, opened in the
+        replay window (pause / replay / speed control); this call returns when it is closed."""
         r = self._renderer(visual, prefix=label)
         results = []
         was_training = self.agent.training
@@ -143,7 +146,7 @@ class Experiment:
         next_eval = c.eval_every if c.eval_every else None
         while step < c.train_steps:
             show = bool(c.train_visual_every) and c.train_visual != "none" and episode % c.train_visual_every == 0
-            r = self._renderer(c.train_visual if show else "none", prefix=f"train_ep{episode:04d}")
+            r = self._renderer(c.train_visual if show else "none", prefix=f"train_ep{episode:04d}", live=True)
             out = run_episode(self.env, self.agent, train=True, renderer=r, title=f"train ep {episode}")
             r.close()
             step += out["steps"]

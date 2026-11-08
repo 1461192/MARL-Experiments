@@ -1,8 +1,10 @@
 from .config import ExperimentConfig
 from .render import Renderer, NullRenderer, TextRenderer, WindowRenderer, GifRenderer, make_renderer
+from .viewer import ReplayViewer, ReplayWindowRenderer, SessionRecorder, SessionRecording
 from .runner import Experiment, Callback, ConsoleLogger, run_episode, set_global_seed
 from .benchmark import Benchmark
 
 __all__ = ["ExperimentConfig", "Experiment", "Callback", "ConsoleLogger", "Benchmark", "run_episode",
            "set_global_seed", "Renderer", "NullRenderer", "TextRenderer", "WindowRenderer",
-           "GifRenderer", "make_renderer"]
+           "GifRenderer", "make_renderer", "ReplayViewer", "ReplayWindowRenderer",
+           "SessionRecorder", "SessionRecording"]
