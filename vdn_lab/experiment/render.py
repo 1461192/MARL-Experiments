@@ -61,7 +61,7 @@ class WindowRenderer(Renderer):
     For finished agents ``make_renderer("window")`` returns the interactive
     ``viewer.ReplayWindowRenderer`` instead (pause / replay / speed control)."""
 
-    def __init__(self, delay: float = 0.08, every: int = 1, cell: int = 24, **_):
+    def __init__(self, delay: float = 0.08, every: int = 1, cell: int = 36, **_):
         import matplotlib.pyplot as plt
         self.plt, self.delay, self.every, self.cell = plt, delay, max(1, every), cell
         self.fig = self.ax = self.im = None
@@ -71,7 +71,8 @@ class WindowRenderer(Renderer):
         self.title = title
         self.plt.ion()
         if self.fig is None:
-            self.fig, self.ax = self.plt.subplots(figsize=(9, 3))
+            self.fig, self.ax = self.plt.subplots(figsize=(11, 5.5))
+            self.fig.subplots_adjust(0.01, 0.01, 0.99, 0.93)
             self.ax.axis("off")
         self.im = None
         self.frame(env, {"step": 0, "return": 0.0, "force": True})
@@ -80,12 +81,14 @@ class WindowRenderer(Renderer):
         step = info.get("step", env.t)
         if step % self.every and not info.get("force"):
             return
-        img = env.render_rgb(self.cell)
-        if self.im is None:
+        from ..envs.scene import render_scene
+        img = render_scene(env, info, cell=self.cell)
+        if self.im is None or self.im.get_array().shape != img.shape:
             self.im = self.ax.imshow(img)
         else:
             self.im.set_data(img)
-        self.ax.set_title(f"{self.title}  step {step}  return {info.get('return', 0):.1f}")
+        self.ax.set_title(f"{self.title}  step {step}/{env.max_steps}  reward {info.get('reward', 0):+.1f}  "
+                          f"return {info.get('return', 0):.1f}")
         self.fig.canvas.draw_idle()
         self.plt.pause(max(self.delay, 0.001))
 
@@ -98,7 +101,7 @@ class WindowRenderer(Renderer):
 class GifRenderer(Renderer):
     """Saves each episode as an animated GIF (no display needed)."""
 
-    def __init__(self, out_dir: str = "gifs", delay: float = 0.08, every: int = 1, cell: int = 20,
+    def __init__(self, out_dir: str = "gifs", delay: float = 0.08, every: int = 1, cell: int = 36,
                  prefix: str = "episode", max_frames: int = 600, **_):
         self.dir = Path(out_dir)
         self.dir.mkdir(parents=True, exist_ok=True)
@@ -111,14 +114,17 @@ class GifRenderer(Renderer):
     def begin_episode(self, env, title: str = "") -> None:
         self.frames = []
         self.title = title
-        self.frame(env, {"step": 0, "force": True})
+        self.frame(env, {"step": 0, "reward": 0.0, "return": 0.0, "force": True})
 
     def frame(self, env, info: Dict[str, Any]) -> None:
         step = info.get("step", env.t)
         if (step % self.every and not info.get("force")) or len(self.frames) >= self.max_frames:
             return
         from PIL import Image
-        self.frames.append(Image.fromarray(env.render_rgb(self.cell)))
+        from ..envs.scene import render_scene
+        head = (f"{self.title}   step {step}/{env.max_steps}   reward {info.get('reward', 0):+.1f}   "
+                f"return {info.get('return', 0):.1f}")
+        self.frames.append(Image.fromarray(render_scene(env, info, cell=self.cell, header=head)))
 
     def end_episode(self, summary: str = "") -> None:
         if not self.frames:

@@ -269,6 +269,24 @@ class GridWorld(ABC):
         return out
 
     # ------------------------------------------------------------ rendering
+    # ------------------------------------------------- full-scene (human) view hooks
+    def scene_items(self) -> List[Tuple[Pos, Color, str]]:
+        """Objects for the full-environment view: ``(position, colour, short label)``.
+        Override in a game to label its objects; the default reuses ``_global_overlays``."""
+        return [(p, col, "") for p, col in self._global_overlays()]
+
+    def scene_legend(self) -> List[Tuple[Color, str]]:
+        """``(colour, description)`` pairs explaining ``scene_items``."""
+        return []
+
+    def scene_summary(self) -> str:
+        """One line of game-wide state for the full-environment view (e.g. items left)."""
+        return ""
+
+    def agent_status(self, i: int) -> str:
+        """Short game-specific status of agent ``i`` (e.g. "carrying item")."""
+        return ""
+
     def _agent_global_color(self, i: int) -> Color:
         return self._self_color(i) if i == 0 else self._other_color(0, i)
 

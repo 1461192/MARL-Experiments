@@ -7,6 +7,11 @@ frame), then shown in a separate matplotlib window where you can
 * replay a session        (Replay button, or ``r``; ``n`` / ``p`` = next / previous session)
 * change the replay speed (speed slider, or ``+`` / ``-``; ``0`` = back to 1x)
 * scrub through a session (frame slider, or ``left`` / ``right`` to step one frame while paused)
+* toggle the agents' own views (``v``) and the field-of-view outlines (``f``)
+
+Every frame shows the *whole* environment (``vdn_lab.envs.scene.render_scene``): the full map
+with numbered agents and their headings, labelled objects, each agent's field of view, a legend,
+per-agent status, and - smaller - what each agent itself observes.
 
 Because frames are re-rendered from recorded game states, replaying is exact and never
 re-runs the agent. ``q`` or closing the window ends the viewer.
@@ -36,8 +41,16 @@ class SessionRecording:
     def __len__(self) -> int:
         return len(self.states)
 
-    def image(self, k: int, cell: int = 24):
-        return self.states[k].render_rgb(cell)
+    def image(self, k: int, cell: int = 44, show_fov: bool = True, show_views: bool = True,
+              header: bool = False):
+        from ..envs.scene import render_scene
+        info = self.infos[k]
+        head = None
+        if header:
+            head = (f"{self.title}   step {info['step']}/{info['max_steps']}   "
+                    f"reward {info['reward']:+.1f}   return {info['return']:.1f}")
+        return render_scene(self.states[k], info, cell=cell, show_fov=show_fov, show_views=show_views,
+                            header=head)
 
 
 class SessionRecorder(Renderer):
@@ -65,7 +78,9 @@ class SessionRecorder(Renderer):
         state = copy.deepcopy(env)
         self._cur.states.append(state)
         self._cur.infos.append({"step": info.get("step", env.t), "reward": float(info.get("reward", 0.0)),
-                                "return": float(info.get("return", 0.0)), "max_steps": env.max_steps})
+                                "return": float(info.get("return", 0.0)), "max_steps": env.max_steps,
+                                "actions": None if info.get("actions") is None else [int(a) for a in info["actions"]],
+                                "agent_rewards": info.get("agent_rewards")})
 
     def end_episode(self, summary: str = "") -> None:
         if self._cur is not None:
@@ -88,7 +103,7 @@ class ReplayViewer:
     ``goto_session``, ``step``) can also be called from code.
     """
 
-    def __init__(self, recordings: Sequence[SessionRecording], delay: float = 0.08, cell: int = 24,
+    def __init__(self, recordings: Sequence[SessionRecording], delay: float = 0.08, cell: int = 44,
                  speed: float = 1.0, autoplay: bool = True, title: str = "vdn_lab replay"):
         recordings = [r for r in recordings if len(r)]
         if not recordings:
@@ -102,26 +117,27 @@ class ReplayViewer:
         self.session, self.k = 0, 0
         self.paused = not autoplay
         self.speed = speed
+        self.show_fov, self.show_views = True, True
         self._cache: Dict[tuple, Any] = {}
         self._syncing = False
 
-        self.fig = plt.figure(figsize=(10, 4.6))
+        self.fig = plt.figure(figsize=(12, 7))
         try:
             self.fig.canvas.manager.set_window_title(title)
         except AttributeError:
             pass
-        self.ax = self.fig.add_axes([0.02, 0.27, 0.96, 0.63])
+        self.ax = self.fig.add_axes([0.01, 0.20, 0.98, 0.72])
         self.ax.axis("off")
-        self.im = self.ax.imshow(self._image(), interpolation="nearest")
+        self.im = self.ax.imshow(self._image(), interpolation="antialiased")
         self.status = self.fig.text(0.5, 0.94, "", ha="center", va="center", fontsize=11, family="monospace")
         self.fig.text(0.5, 0.015, "space pause   r replay   n/p next/prev session   "
-                                  "←/→ step   +/- speed   0 reset speed   q quit",
+                                  "\u2190/\u2192 step   +/- speed   0 reset speed   v agent views   f field of view   q quit",
                       ha="center", fontsize=8, color="0.4")
 
-        self.s_frame = Slider(self.fig.add_axes([0.12, 0.19, 0.76, 0.04]), "frame", 0,
+        self.s_frame = Slider(self.fig.add_axes([0.12, 0.135, 0.76, 0.03]), "frame", 0,
                               max(1, len(self.rec) - 1), valinit=0, valstep=1)
         self.s_frame.on_changed(self._on_scrub)
-        self.s_speed = Slider(self.fig.add_axes([0.70, 0.08, 0.18, 0.05]), "speed",
+        self.s_speed = Slider(self.fig.add_axes([0.70, 0.06, 0.18, 0.04]), "speed",
                               0, len(SPEEDS) - 1, valinit=self._speed_index(speed), valstep=1)
         self.s_speed.valtext.set_text(self._speed_label())
         self.s_speed.on_changed(self._on_speed)
@@ -131,7 +147,7 @@ class ReplayViewer:
                                ("↻ replay", 0.16, 0.10, lambda _: self.replay()),
                                ("pause", 0.27, 0.10, lambda _: self.toggle_pause()),
                                ("next ▶▶", 0.38, 0.10, lambda _: self.goto_session(self.session + 1))]:
-            b = Button(self.fig.add_axes([x, 0.07, w, 0.07]), name)
+            b = Button(self.fig.add_axes([x, 0.05, w, 0.06]), name)
             b.on_clicked(fn)
             self.buttons[name] = b
         self.b_pause = self.buttons["pause"]
@@ -150,11 +166,12 @@ class ReplayViewer:
         return max(10, int(1000 * self.delay / self.speed))
 
     def _image(self):
-        key = (self.session, self.k)
+        key = (self.session, self.k, self.show_fov, self.show_views)
         if key not in self._cache:
             if len(self._cache) > 256:
                 self._cache.clear()
-            self._cache[key] = self.rec.image(self.k, self.cell)
+            self._cache[key] = self.rec.image(self.k, self.cell, show_fov=self.show_fov,
+                                              show_views=self.show_views)
         return self._cache[key]
 
     @staticmethod
@@ -205,6 +222,16 @@ class ReplayViewer:
         self.s_speed.valtext.set_text(self._speed_label())
         self._refresh()
 
+    def toggle_views(self) -> None:
+        """Show / hide the panels with each agent's own (egocentric) observation."""
+        self.show_views = not self.show_views
+        self._refresh()
+
+    def toggle_fov(self) -> None:
+        """Show / hide the field-of-view outlines on the map."""
+        self.show_fov = not self.show_fov
+        self._refresh()
+
     def faster(self, n: int = 1) -> None:
         self.set_speed(SPEEDS[min(max(self._speed_index(self.speed) + n, 0), len(SPEEDS) - 1)])
 
@@ -239,7 +266,8 @@ class ReplayViewer:
                    "p": lambda: self.goto_session(self.session - 1), "right": lambda: self.step(1),
                    "left": lambda: self.step(-1), "+": self.faster, "=": self.faster, "up": self.faster,
                    "-": lambda: self.faster(-1), "down": lambda: self.faster(-1), "0": lambda: self.set_speed(1.0),
-                   "home": lambda: self.step(-len(self.rec)), "end": lambda: self.step(len(self.rec))}
+                   "home": lambda: self.step(-len(self.rec)), "end": lambda: self.step(len(self.rec)),
+                   "v": self.toggle_views, "f": self.toggle_fov}
         if key in actions:
             actions[key]()
 
@@ -261,7 +289,8 @@ class ReplayViewer:
     def _refresh(self) -> None:
         img = self._image()
         if img.shape != self.im.get_array().shape:
-            self.im = self.ax.imshow(img, interpolation="nearest")
+            self.im.remove()
+            self.im = self.ax.imshow(img, interpolation="antialiased")
         else:
             self.im.set_data(img)
         self.status.set_text(self.status_text())
@@ -288,7 +317,7 @@ class ReplayWindowRenderer(SessionRecorder):
     Without an interactive display the sessions are saved as GIFs instead (``fallback_dir``).
     """
 
-    def __init__(self, delay: float = 0.08, every: int = 1, cell: int = 24, fallback_dir: str = "gifs",
+    def __init__(self, delay: float = 0.08, every: int = 1, cell: int = 44, fallback_dir: str = "gifs",
                  prefix: str = "episode", speed: float = 1.0, **_):
         super().__init__(every)
         self.delay, self.cell, self.fallback_dir, self.prefix, self.speed = delay, cell, fallback_dir, prefix, speed
@@ -303,18 +332,18 @@ class ReplayWindowRenderer(SessionRecorder):
             self.viewer.show()
         else:
             print("no interactive display available for the replay window; saving GIFs instead")
-            save_gifs(recs, self.fallback_dir, self.prefix, self.delay, cell=20)
+            save_gifs(recs, self.fallback_dir, self.prefix, self.delay)
         self.recordings = []
 
 
 def save_gifs(recordings: Sequence[SessionRecording], out_dir: str, prefix: str = "episode",
-              delay: float = 0.08, cell: int = 20) -> List[Path]:
+              delay: float = 0.08, cell: int = 36) -> List[Path]:
     from PIL import Image
     d = Path(out_dir)
     d.mkdir(parents=True, exist_ok=True)
     paths = []
     for n, rec in enumerate(recordings):
-        frames = [Image.fromarray(rec.image(k, cell)) for k in range(len(rec))]
+        frames = [Image.fromarray(rec.image(k, cell, header=True)) for k in range(len(rec))]
         p = d / f"{prefix}_{n:03d}.gif"
         frames[0].save(p, save_all=True, append_images=frames[1:], duration=max(20, int(delay * 1000)), loop=0)
         print(f"saved {p}")

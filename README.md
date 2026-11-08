@@ -6,12 +6,12 @@ Pure Python + PyTorch + NumPy; runs on one CPU core.
 
 ```
 vdn_lab/
-  envs/         base.py (grid world, egocentric FOV, rendering)  switch.py  fetch.py  checkers.py
+  envs/         base.py (grid world, egocentric FOV, rendering)  scene.py (full-map view)  switch.py  fetch.py  checkers.py
   agents/       base.py (Agent interface)  networks.py  recurrent_dqn.py  vdn.py
                 independent.py  centralized.py  baselines.py  replay.py
   experiment/   config.py  runner.py  benchmark.py  render.py
   cli.py        python -m vdn_lab ...
-examples/       five runnable examples      tests/   pytest suite (43 tests)
+examples/       five runnable examples      tests/   pytest suite (45 tests)
 ```
 
 ## Install / run
@@ -78,6 +78,14 @@ recorded and then opened in a separate matplotlib window instead of being printe
 | previous / next session | `prev` / `next` buttons, `p` / `n` (sessions auto-advance) |
 | replay speed (0.25x – 16x) | speed slider, `+` / `-`, `0` resets to 1x |
 | scrub / step frames | frame slider, `←` / `→` |
+| show / hide each agent's own view, field-of-view outlines | `v`, `f` |
+
+Each frame shows the **whole environment**: the full map with numbered agents and heading arrows,
+labelled objects (pick-up/drop-off, goals, apples/lemons), each agent's field of view outlined in its
+colour, beams, a legend, and per-agent status (position, heading, last action, reward, e.g. whether it
+carries the item). What each agent itself observes is shown as a small inset. GIFs (`gif` mode) use the
+same picture plus a title line. Games describe their objects via the `scene_items` / `scene_legend` /
+`scene_summary` / `agent_status` hooks of `GridWorld`.
 
 Replays re-render the recorded game states, so they are exact and do not re-run the agent. The window
 needs an interactive matplotlib backend (e.g. TkAgg / QtAgg); without a display the sessions are saved

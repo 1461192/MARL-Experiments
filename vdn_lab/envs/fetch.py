@@ -112,6 +112,25 @@ class Fetch(GridWorld):
     def _global_overlays(self) -> List[Tuple[Pos, Color]]:
         return self._object_overlays(0)
 
+    def scene_items(self):
+        out = [(self.drop, C_GREEN, "D")]
+        if self.item_available:
+            out.append((self.pickup, C_MAGENTA, "P"))
+        else:
+            out.append((self.pickup, (235, 200, 235), "p"))
+        return out
+
+    def scene_legend(self):
+        return [(C_MAGENTA, f"P pick-up (+{self.pickup_reward:g})"),
+                (C_GREEN, f"D drop-off (+{self.dropoff_reward:g})"),
+                ((235, 200, 235), "p pick-up taken")]
+
+    def agent_status(self, i: int) -> str:
+        return "carrying item" if self.carrying[i] else "empty-handed"
+
+    def scene_carrying(self, i: int) -> bool:
+        return bool(self.carrying[i])
+
     def _global_chars(self):
         d = {self.drop: "D"}
         if self.item_available:

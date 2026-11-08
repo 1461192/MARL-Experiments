@@ -53,7 +53,8 @@ def run_episode(env, agent: Agent, *, train: bool, explore: Optional[bool] = Non
         total += reward
         per_agent += np.asarray(info["agent_rewards"])
         steps += 1
-        renderer.frame(env, {"step": steps, "reward": reward, "return": total, "actions": actions})
+        renderer.frame(env, {"step": steps, "reward": reward, "return": total, "actions": actions,
+                             "agent_rewards": info["agent_rewards"]})
     renderer.end_episode(f"{title}: return {total:.1f} in {steps} steps")
     return {"return": total, "steps": steps, "agent_returns": per_agent.tolist(),
             "loss": float(np.mean(losses)) if losses else float("nan")}

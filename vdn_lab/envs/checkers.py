@@ -84,3 +84,15 @@ class Checkers(GridWorld):
 
     def _global_chars(self):
         return {p: ("p" if k == "apple" else "l") for p, k in self.items.items()}
+
+    def scene_items(self):
+        return [(p, C_GREEN if k == "apple" else C_ORANGE, "A" if k == "apple" else "L")
+                for p, k in self.items.items()]
+
+    def scene_legend(self):
+        return [(C_GREEN, f"A apple (agent 0: +{self.values[0]:g}, agent 1: +{self.values[1]:g})"),
+                (C_ORANGE, f"L lemon (agent 0: -{self.values[0]:g}, agent 1: -{self.values[1]:g})")]
+
+    def scene_summary(self) -> str:
+        n_apples = sum(k == "apple" for k in self.items.values())
+        return f"apples left: {n_apples}   lemons left: {len(self.items) - n_apples}"
