@@ -13,8 +13,8 @@ class VDNAgent(_PerAgentQ):
     Training: one TD regression of the *summed* Q towards the team-reward target
         r + gamma * sum_i max_a' Q_i'(h_i', a')
     so the team error's gradient flows through the sum into every agent's network.
-    Execution: each agent acts greedily on its own Q_i, which equals maximising the sum, so
-    agents deploy fully decentralised.
+    Execution: each agent acts greedily on its own Q_i, which equals maximizing the sum, so
+    agents deploy fully decentralized.
 
     Options (paper sec. 3 / table 1): ``share_weights`` (agent-invariant network) and
     ``role_info`` (one-hot agent id concatenated with every observation).
