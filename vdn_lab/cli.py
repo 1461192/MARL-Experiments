@@ -110,7 +110,7 @@ def cmd_list(a) -> None:
     print("games:")
     for n in ENVS.names():
         cls = ENVS.get(n)
-        print(f"  {n:9s} maps: {', '.join(cls.LAYOUTS)} (default: {cls.default_layout_name})")
+        print(f"  {n:16s} maps: {', '.join(cls.LAYOUTS)} (default: {cls.default_layout_name})")
 
 
 def cmd_watch(a) -> None:
