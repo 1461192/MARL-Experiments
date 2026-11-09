@@ -7,11 +7,12 @@ Pure Python + PyTorch + NumPy; runs on one CPU core.
 ```
 vdn_lab/
   envs/         base.py (grid world, egocentric FOV, rendering)  scene.py (full-map view)  switch.py  fetch.py  checkers.py
+                matrix.py (matrix / two-stage matrix games)
   agents/       base.py (Agent interface)  networks.py  recurrent_dqn.py  vdn.py
                 independent.py  centralized.py  baselines.py  replay.py
   experiment/   config.py  runner.py  benchmark.py  render.py
   cli.py        python -m vdn_lab ...
-examples/       five runnable examples      tests/   pytest suite (45 tests)
+examples/       five runnable examples      tests/   pytest suite (62 tests)
 ```
 
 ## Install / run
@@ -50,6 +51,29 @@ egocentric RGB window, default 3×5×5 (4 ahead, 2 each side).
 * `switch` – reach your own goal at the other end; maps `open`, `single`, `double`; +1 per goal, reset when both arrive.
 * `fetch` – pick up (+3) and drop at base (+5), pick-up reappears; maps `open`, `single`, `double`.
 * `checkers` – apples/lemons; player 0 scores ±10, player 1 ±1; resets when all apples are eaten.
+
+**Matrix games** (two players, not in the paper; the usual small sanity checks for cooperative MARL):
+
+* `matrix` – agent 0 picks a **row**, agent 1 a **column**, both get that cell's payoff. Games (`--map`):
+  `climbing` (default), `penalty`, `coordination`, `nonmonotonic` (QTRAN's example), and the general-sum
+  `prisoners_dilemma`, `stag_hunt`, `chicken`.
+* `two_stage_matrix` – agent 0 first **picks one of the matrices** (agent 1's action is ignored in that
+  step), then both play the chosen matrix as above. Games: `two_step` (QMIX's two-step game, default),
+  `climbing_or_safe`. `observe_choice=False` hides the choice from agent 1; `choice_rewards=[...]` pays
+  for the first-stage choice.
+
+Custom games via `payoffs=`: an `R x C` matrix of common payoffs or `R x C x 2` per-player payoffs (team
+reward = sum of both); for `two_stage_matrix` a list of such matrices (shapes may differ). Both agents
+share `max(rows, columns[, matrices])` actions; a smaller dimension takes action `a mod size`.
+Observations are tiny one-hot vectors (stage and, if visible, the chosen matrix). The game repeats round
+after round for `episode_len` steps (the recurrent learners need 8-step trajectories), so use
+`--agent-kw gamma=0` for a myopic one-shot learner on `matrix`.
+
+```bash
+python -m vdn_lab watch --env two_stage_matrix --map two_step --episode-len 10
+python -m vdn_lab train --env matrix --map climbing --agent vdn --steps 20000 --episode-len 50 \
+       --agent-kw gamma=0 warmup_steps=500 eps_decay_steps=10000 --eval-visual text
+```
 
 The exact map layouts in the paper are only given as pictures, so the maps here are my own
 approximations of them, and the numbers are **not** comparable with the paper's figures.

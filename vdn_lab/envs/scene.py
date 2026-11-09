@@ -57,6 +57,9 @@ def render_scene(env, info: Optional[Dict[str, Any]] = None, *, cell: int = 44, 
 
     ``info`` may hold ``step``, ``reward``, ``return``, ``actions`` (as passed to renderers);
     ``header`` adds a title line on top (used for GIFs, the window has its own title)."""
+    custom = getattr(env, "render_scene", None)
+    if callable(custom):                                # non-grid games draw themselves
+        return custom(info, cell=cell, show_fov=show_fov, show_views=show_views, header=header)
     from PIL import Image, ImageDraw
 
     info = info or {}
