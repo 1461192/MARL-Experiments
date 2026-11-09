@@ -89,3 +89,12 @@ class Switch(GridWorld):
 
     def _global_chars(self):
         return {self.goals[0]: "a", self.goals[1]: "b"}
+
+    def scene_items(self):
+        return [(self.goals[0], (140, 180, 255), "G0"), (self.goals[1], (255, 160, 160), "G1")]
+
+    def scene_legend(self):
+        return [((140, 180, 255), "G0 goal of agent 0"), ((255, 160, 160), "G1 goal of agent 1")]
+
+    def agent_status(self, i: int) -> str:
+        return "at goal (waiting)" if self.reached[i] else "heading to goal"

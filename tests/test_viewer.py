@@ -62,3 +62,24 @@ def test_window_visual_without_display_falls_back_to_gifs(tmp_path, capsys):
     Experiment(cfg).run()
     assert len(list(tmp_path.rglob("*.gif"))) == 2
     assert "no interactive display" in capsys.readouterr().out
+
+
+def test_scene_shows_whole_environment_for_every_game():
+    import numpy as np
+    from vdn_lab.envs.scene import render_scene
+    for name in ("switch", "fetch", "checkers"):
+        env = make_env(name, max_steps=5, seed=0)
+        env.reset()
+        full = render_scene(env, {"actions": [0, 1]}, cell=20)
+        bare = render_scene(env, cell=20, show_views=False, show_fov=False)
+        assert full.ndim == 3 and full.dtype == np.uint8
+        assert full.shape[0] > env.height * 20 and full.shape[1] > env.width * 20   # map + side panel
+        assert bare.shape[0] <= full.shape[0]
+
+
+def test_viewer_toggles_views_and_fov():
+    v = ReplayViewer(recordings(n=1, steps=5))
+    v.toggle_views(); v.toggle_fov()
+    assert not v.show_views and not v.show_fov
+    assert v.rec.infos[1]["actions"] is not None and v.rec.infos[1]["agent_rewards"] is not None
+    v.close()
