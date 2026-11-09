@@ -4,6 +4,13 @@ The paper trains for 50,000 *episodes* of 5,000 steps; these examples use ~1e-3 
 so they raise the learning rate and shorten the epsilon schedule. Set VDN_QUICK=1 to
 smoke-test any example in seconds (it will not learn anything)."""
 import os
+import sys
+from pathlib import Path
+
+# make `python examples/<file>.py` work from anywhere without installing the package
+_ROOT = str(Path(__file__).resolve().parents[1])
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
 
 QUICK = bool(os.environ.get("VDN_QUICK"))
 

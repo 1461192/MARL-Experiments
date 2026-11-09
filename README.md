@@ -109,6 +109,7 @@ Games work the same way via `@register_env` and subclassing `GridWorld`. See `ex
 | `03_checkers_weight_sharing.py` | separate vs shared vs shared+role networks |
 | `04_train_headless_then_watch.py` | headless training, then text/GIF/window sessions |
 | `05_custom_agent.py` | plugging in new agents |
+| `06_compare_learners.py` | VDN vs independent vs centralised on fetch, switch and checkers, 3 seeds, plots + behaviour stats → `results/learner_comparison/` |
 
 `VDN_QUICK=1` makes every example finish in seconds (nothing is learned; it checks the plumbing).
 
