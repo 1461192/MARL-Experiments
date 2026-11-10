@@ -152,13 +152,8 @@ class RecurrentDQNAgent(Agent):
         obs = self._to_input(batch["obs"])                                  # (B, W, d, F)
         actions = torch.from_numpy(batch["actions"]).to(self.device)        # (B, W-1, d)
         rew = torch.from_numpy(batch["rewards"]).to(self.device)[:, bs:].unsqueeze(-1)  # (B, L, 1)
-        hid0 = self.net.initial_hidden(obs.shape[0], self.device)
-
-        q, _ = self.net(obs, hid0)
-        chosen = self._chosen_q(q[:, bs:bs + L], actions[:, bs:])            # (B, L, K)
+        chosen, boot = self._td_values(obs, actions)                         # (B, L, K) each
         with torch.no_grad():
-            tq, _ = self.target(obs, hid0)
-            boot = self._max_q(tq[:, bs + 1:])                               # (B, L, K)
             G = lambda_returns(rew, boot, c.gamma, c.lam)
         loss_fn = F.smooth_l1_loss if c.loss == "huber" else F.mse_loss
         loss = loss_fn(chosen, G)
@@ -171,6 +166,19 @@ class RecurrentDQNAgent(Agent):
         if self.n_updates % c.target_update_every == 0:
             self.target.load_state_dict(self.net.state_dict())
         return {"loss": float(loss.item()), "q_mean": float(chosen.mean().item()), "epsilon": self.epsilon}
+
+    def _td_values(self, obs: torch.Tensor, actions: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """obs ``(B, W, d, F)``, actions ``(B, W-1, d)`` -> (Q of the taken actions on the L
+        learning steps, greedy bootstrap values after each of them), both ``(B, L, K)``.
+        Agents whose joint value needs more than the per-step Q's (mixing networks) override this."""
+        bs, L = self.cfg.burn_in, self.cfg.seq_len
+        hid0 = self.net.initial_hidden(obs.shape[0], self.device)
+        q, _ = self.net(obs, hid0)
+        chosen = self._chosen_q(q[:, bs:bs + L], actions[:, bs:])
+        with torch.no_grad():
+            tq, _ = self.target(obs, hid0)
+            boot = self._max_q(tq[:, bs + 1:])
+        return chosen, boot
 
     # ------------------------------------------------------------ persistence
     def state_dict(self) -> Dict[str, Any]:
