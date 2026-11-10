@@ -3,7 +3,9 @@
 A small, StarCraft-free testbed for **Value-Decomposition Networks** (Sunehag et al., 2017,
 [arXiv:1706.05296](https://arxiv.org/abs/1706.05296)) and the baselines it is compared with, plus the
 mixing-network successors **QMIX** (Rashid et al., 2018, [arXiv:1803.11485](https://arxiv.org/abs/1803.11485))
-and **QPLEX** (Wang et al., 2021, [arXiv:2008.01062](https://arxiv.org/abs/2008.01062)).
+and **QPLEX** (Wang et al., 2021, [arXiv:2008.01062](https://arxiv.org/abs/2008.01062)), and the policy-gradient
+learner **MAPPO** (PPO, Schulman et al., 2017, [arXiv:1707.06347](https://arxiv.org/abs/1707.06347), set up for
+cooperative multi-agent games as in Yu et al., 2022, [arXiv:2103.01955](https://arxiv.org/abs/2103.01955)).
 Pure Python + PyTorch + NumPy; runs on one CPU core.
 
 ```
@@ -13,9 +15,10 @@ vdn_lab/
   agents/       base.py (Agent interface)  networks.py  recurrent_dqn.py  vdn.py
                 independent.py  centralized.py  baselines.py  replay.py
                 mixers.py (QMIX / QPLEX mixing networks)  mixing.py (qmix / qplex agents)
+                mappo.py (MAPPO / IPPO)
   experiment/   config.py  runner.py  benchmark.py  render.py
   cli.py        python -m vdn_lab ...
-examples/       seven runnable examples     tests/   pytest suite (75 tests)
+examples/       eight runnable examples     tests/   pytest suite (89 tests)
 ```
 
 ## Install / run
@@ -47,6 +50,8 @@ forward-view λ-returns over trajectories of 8, λ = 0.9, Adam (default lr 1e-4)
 | `random` | uniform random (floor / template) |
 | `qmix` | VDN's per-agent nets + QMIX's monotonic mixing network (see below) |
 | `qplex` | VDN's per-agent nets + QPLEX's duplex dueling mixing network (see below) |
+| `mappo` | PPO policies per agent + a centralised critic (see below) |
+| `ippo` | the same PPO learner, each agent's critic sees only its own observations |
 
 Not implemented: the information-channel variants (low/high-level communication) from Table 1.
 
@@ -204,6 +209,7 @@ Games work the same way via `@register_env` and subclassing `GridWorld`. See `ex
 | `05_custom_agent.py` | plugging in new agents |
 | `06_compare_learners.py` | VDN vs independent vs centralised on fetch, switch and checkers, 3 seeds, plots + behaviour stats → `results/learner_comparison/` |
 | `07_matrix_qmix_qplex.py` | matrix games that separate VDN / QMIX / QPLEX, 8 seeds, plus a representation-only fit |
+| `08_fetch_mappo_vs_vdn.py` | MAPPO vs VDN (and IPPO) on fetch `open` and `single`, 3 seeds → `results/mappo_vs_vdn/` |
 
 `VDN_QUICK=1` makes every example finish in seconds (nothing is learned; it checks the plumbing).
 

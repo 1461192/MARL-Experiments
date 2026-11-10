@@ -4,6 +4,7 @@ from .independent import IndependentAgent
 from .vdn import VDNAgent
 from .centralized import CentralizedAgent, CentralizedVDNAgent
 from .mixing import MixingAgent, QMIXAgent, QPLEXAgent
+from .mappo import MAPPOAgent, IPPOAgent, PPOConfig
 from .baselines import RandomAgent
 from ..registry import AGENTS
 
@@ -13,4 +14,5 @@ def make_agent(name: str, **kwargs) -> Agent:
 
 
 __all__ = ["Agent", "RecurrentDQNAgent", "DQNConfig", "lambda_returns", "IndependentAgent", "VDNAgent",
-           "CentralizedAgent", "CentralizedVDNAgent", "MixingAgent", "QMIXAgent", "QPLEXAgent", "RandomAgent", "make_agent"]
+           "CentralizedAgent", "CentralizedVDNAgent", "MixingAgent", "QMIXAgent", "QPLEXAgent", "RandomAgent",
+           "MAPPOAgent", "IPPOAgent", "PPOConfig", "make_agent"]
