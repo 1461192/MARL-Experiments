@@ -1,0 +1,28 @@
+{
+  "name": "mappo_s1",
+  "seed": 1,
+  "device": "cpu",
+  "env": "fetch",
+  "env_kwargs": {
+    "layout": "single"
+  },
+  "episode_len": 200,
+  "eval_episode_len": 200,
+  "agent": "mappo",
+  "agent_kwargs": {},
+  "train_steps": 200000,
+  "eval_every": 25000,
+  "eval_episodes": 3,
+  "final_eval_sessions": 5,
+  "train_visual": "none",
+  "train_visual_every": 0,
+  "eval_visual": "none",
+  "visual_delay": 0.08,
+  "visual_every": 1,
+  "visual_color": true,
+  "visual_views": true,
+  "visual_dir": null,
+  "out_dir": "/home/user/MARL-Experiments/results/mappo_vs_vdn/single/runs",
+  "save_agent": true,
+  "verbose": 1
+}

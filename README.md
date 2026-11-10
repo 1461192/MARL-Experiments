@@ -111,6 +111,57 @@ Episodes are one round long so every trajectory starts from a fresh LSTM state, 
 With long episodes of repeated rounds and `seq_len=1`, the greedy action can drift as the LSTM state moves
 into states it was never trained on.
 
+### MAPPO and IPPO (`vdn_lab/agents/mappo.py`)
+
+**Learner (PPO paper):** the clipped surrogate `L^CLIP = E[min(r_t Â_t, clip(r_t, 1−ε, 1+ε) Â_t)]` (eq. 7) plus an
+entropy bonus (eq. 9), GAE advantages (eq. 11–12), and K epochs of Adam on each new batch of on-policy data.
+Each agent has a stochastic policy over its own observation history. At execution time it acts on its own
+(greedy evaluation takes the most likely action). The critic is used only during training.
+
+**Multi-agent setup (Yu et al. 2022, sec. 5).** Each of the paper's five suggestions maps to a default:
+
+| sec. | suggestion | here (agent kwarg, default) |
+|---|---|---|
+| 5.1 | value normalisation | `value_norm=True`: running mean/std of the returns (debiased EMA as in the authors' `ValueNorm`); the critic regresses onto normalised returns, which are de-normalised for GAE |
+| 5.2 | agent-specific global state for the critic | `critic_input="agent_specific"`: own observation, then the other agents' observations, then a one-hot id. `"concat"` is the CL variant, and `"local"` gives IPPO. The agent interface has no global state, so the union of the agents' views stands in for it |
+| 5.3 | few epochs, no mini-batch splitting | `ppo_epochs=10`, `num_mini_batch=1` |
+| 5.4 | clip ε ≤ 0.2 | `clip=0.2`, value predictions clipped with the same range (`value_clip`) |
+| 5.5 | large batches | one update per `rollout_len=1000` env steps (5 episodes × 2 agents = 2000 samples) |
+
+Other details follow the paper's appendix and code. `share_weights=True` uses one policy and one critic for
+both agents (`role_info` adds the id to the policy input). Policy and critic are each
+`LayerNorm → 64 → 64 → GRU(64) → LayerNorm → head`, trained by BPTT on 10-step chunks (`chunk_len`) that start
+from the hidden state recorded during collection, with resets at episode starts. The rest: orthogonal init,
+Huber value loss (δ = 10), advantage normalisation, separate Adam optimisers (lr 5e-4, eps 1e-5), grad-norm
+clip 10, entropy coefficient 0.01, γ = 0.99, GAE λ = 0.95. The grid-world episodes end on a time limit, not in
+a terminal state, so the last step of an episode bootstraps from `V(next_obs)` (`bootstrap_on_done=True`).
+`ippo` is the same agent with `critic_input="local"`.
+
+**MAPPO vs VDN on fetch** (`examples/08_fetch_mappo_vs_vdn.py`, full tables, plots and GIFs in
+`results/mappo_vs_vdn/`). Settings: 200k steps, 200-step episodes, 3 seeds. VDN uses the hyper-parameters of
+example 6 (its `open` numbers match `results/learner_comparison/fetch` exactly, same seeds). MAPPO and IPPO use
+the defaults above, with no tuning on this task. Each cell is the greedy return of the final policy over 5
+sessions, mean ± std over seeds; "AUC" is the mean training return over the whole run.
+
+| map | `vdn` | `mappo` | `ippo` | train AUC vdn / mappo / ippo |
+|---|---|---|---|---|
+| `open` | 139.7 ± 19.6 | 198.0 ± 43.2 | **216.3 ± 30.2** | 74 / 141 / 151 |
+| `single` (one corridor) | 81.0 ± 10.7 | 86.7 ± 16.5 | **104.1 ± 7.7** | 16 / 58 / 64 |
+
+* Both PPO learners learn much faster than VDN: their training AUC is roughly 2× VDN's on `open` and
+  roughly 4× on `single`. Each PPO run took about 200 s on one core, against about 430 s for VDN.
+* VDN's greedy policies are all "lazy agent" solutions: in every seed on both maps one agent earns all the
+  reward and the other mostly stands still. MAPPO split the work in all 3 `open` seeds but only 1 of 3 `single`
+  seeds. IPPO split it in every seed and scored best on both maps.
+* In this small two-agent game the centralised critic did not beat a local critic. Yu et al. likewise report
+  IPPO close to MAPPO on many tasks. With 3 seeds the gap between MAPPO and IPPO is within noise.
+
+```bash
+python -m vdn_lab train --env fetch --map open --agent mappo --steps 200000 --episode-len 200 \
+       --eval-episode-len 200 --eval-every 25000 --final-sessions 3 --eval-visual window
+python examples/08_fetch_mappo_vs_vdn.py           # VDN vs MAPPO vs IPPO, open + single, 3 seeds, ~30 min on 4 cores
+```
+
 **Games (sec. 4.2):** 8 actions (forward/back/left/right, rotate ×2, beam, noop); observation is an
 egocentric RGB window, default 3×5×5 (4 ahead, 2 each side).
 
