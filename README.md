@@ -1,7 +1,9 @@
 # vdn_lab
 
 A small, StarCraft-free testbed for **Value-Decomposition Networks** (Sunehag et al., 2017,
-[arXiv:1706.05296](https://arxiv.org/abs/1706.05296)) and the baselines it is compared with.
+[arXiv:1706.05296](https://arxiv.org/abs/1706.05296)) and the baselines it is compared with, plus the
+mixing-network successors **QMIX** (Rashid et al., 2018, [arXiv:1803.11485](https://arxiv.org/abs/1803.11485))
+and **QPLEX** (Wang et al., 2021, [arXiv:2008.01062](https://arxiv.org/abs/2008.01062)).
 Pure Python + PyTorch + NumPy; runs on one CPU core.
 
 ```
@@ -10,9 +12,10 @@ vdn_lab/
                 matrix.py (matrix / two-stage matrix games)
   agents/       base.py (Agent interface)  networks.py  recurrent_dqn.py  vdn.py
                 independent.py  centralized.py  baselines.py  replay.py
+                mixers.py (QMIX / QPLEX mixing networks)  mixing.py (qmix / qplex agents)
   experiment/   config.py  runner.py  benchmark.py  render.py
   cli.py        python -m vdn_lab ...
-examples/       five runnable examples      tests/   pytest suite (62 tests)
+examples/       seven runnable examples     tests/   pytest suite (75 tests)
 ```
 
 ## Install / run
@@ -42,8 +45,66 @@ forward-view λ-returns over trajectories of 8, λ = 0.9, Adam (default lr 1e-4)
 | `centralized` | single Q over the joint action space (8² = 64 outputs) |
 | `centralized_vdn` | centralised trunk, summed per-agent heads |
 | `random` | uniform random (floor / template) |
+| `qmix` | VDN's per-agent nets + QMIX's monotonic mixing network (see below) |
+| `qplex` | VDN's per-agent nets + QPLEX's duplex dueling mixing network (see below) |
 
 Not implemented: the information-channel variants (low/high-level communication) from Table 1.
+
+### QMIX and QPLEX (`vdn_lab/agents/mixers.py`, `mixing.py`)
+
+Both use the same per-agent recurrent nets and learner as `vdn` (so the three differ **only** in how the
+per-agent `Q_i` are combined into `Q_tot`), a target copy of the mixer, and decentralised greedy execution.
+The mixers need a global state; the agent interface only passes observations, so the state is **all
+agents' observations concatenated** (in the matrix games this is exactly the state).
+
+* **QMIX** (paper sec. 4): `Q_tot = w2ᵀ ELU(W1ᵀ q + b1) + b2`, mixing layer of 32 units. `W1`, `w2` come from
+  single-layer hypernetworks of the state followed by an absolute value (non-negative weights ⇒
+  `∂Q_tot/∂Q_i ≥ 0`); `b1` from one linear layer; `b2 = V(s)` from a two-layer hypernetwork with a ReLU.
+  The bootstrap mixes each agent's own max, which is `max Q_tot` by monotonicity.
+* **QPLEX** (paper sec. 4): `V_i = max Q_i`, `A_i = Q_i − V_i`; transformation `Q_i(τ,a_i) = w_i(s) Q_i + b_i(s)`,
+  `V_i(τ) = w_i(s) V_i + b_i(s)` with `w_i > 0`; `Q_tot = Σ V_i(τ) + Σ λ_i(τ,a) A_i(τ,a_i)` where
+  `λ_i = Σ_k key_k(s)·σ(agent_k(s))_i·σ(action_k(s,a))_i > 0` (multi-head attention over state and joint action,
+  4 heads). Since `A_i ≤ 0` with equality at the greedy action, the per-agent argmax always maximises `Q_tot`.
+  By default (`detach_advantage=True`) the λ-term is computed as in the authors' PyMARL code:
+  `Q_tot = Σ Q_i(τ,a_i) + Σ (λ_i − 1)·stopgrad(A_i)`, which has the same value but gradients only reach the
+  agents through `Σ Q_i`. It learns more reliably here (below); `False` uses the plain eq.-9 gradient.
+  `double_q=True` (both agents) picks bootstrap actions with the online net.
+
+Agent kwargs: `mixing_embed_dim` (both), `n_heads`, `attn_hidden`, `attn_layers`, `detach_advantage` (QPLEX),
+`double_q`, plus everything `vdn` takes (`share_weights`, `role_info`, `DQNConfig` fields).
+
+**Matrix games that separate them** (`examples/07_matrix_qmix_qplex.py`, tests in `tests/test_mixing.py`;
+helpers in `vdn_lab/experiment/matrix_study.py`). As in both papers the learners see uniformly random joint
+actions (ε = 1) with 1-step targets, then play the greedy policy; one round per episode. Greedy return, 8 seeds:
+
+| game (optimum 8) | `vdn` | `qmix` | `qplex` |
+|---|---|---|---|
+| two-step game, `two_stage_matrix --map two_step` (QMIX sec. 6.1) | 7 in 8/8 | **8 in 8/8** | |
+| non-monotonic `matrix --map nonmonotonic` `[[8,-12,-12],[-12,0,0],[-12,0,0]]` | 0 in 8/8 | 0 in 8/8 | **8 in 5/8** |
+
+* Two-step: VDN's additive fit of matrix 1 peaks at 6.5 < 7, so it picks the safe matrix. Matrix 1 is
+  monotonic, and QMIX fits it exactly with a mixer conditioned on which matrix is being played.
+* Non-monotonic: no monotonic mixer can represent the table. Fitting `Q_tot` straight onto it (no RL, every
+  cell weighted equally) bottoms out at MSE 50.6 (VDN) and 35.6 (QMIX) from every initialisation. QPLEX can
+  represent it **but does not always find it**: with the exact gradient it reaches MSE 0 with greedy (A, A)
+  from 2 of 8 initialisations. The usual failure is a local optimum where the agents' greedy action is B,
+  `V_tot ≈ 4` splits the difference between the cells (A,A) = 8 and (B,B) = 0, and λ(A,A) shrinks
+  toward 0, which removes the gradient `Q_i(A)` needs to overtake `Q_i(B)`. The stop-gradient default avoids
+  that collapse more often (5/8 in the RL run). The other parameters I tried (lr, number of heads, 1-layer λ
+  networks, Huber loss, ε-greedy data, longer training) did not make it reliable.
+
+```bash
+python examples/07_matrix_qmix_qplex.py        # both games, 8 seeds, ~5 min on 4 cores
+python -m vdn_lab train --env two_stage_matrix --map two_step --agent qmix --steps 3000 --episode-len 2 \
+       --eval-episode-len 2 --eval-every 0 --lr 2e-3 --agent-kw eps_start=1 eps_end=1 lam=0 seq_len=2 gamma=0.5 \
+       warmup_steps=200 train_every=1 batch_size=64 target_update_every=50 loss=mse --final-sessions 1 --eval-visual text
+python -m vdn_lab train --env matrix --map nonmonotonic --agent qplex --steps 5000 --episode-len 1 \
+       --eval-episode-len 1 --eval-every 0 --lr 5e-3 --agent-kw eps_start=1 eps_end=1 lam=0 seq_len=1 gamma=0 \
+       warmup_steps=200 train_every=1 batch_size=64 target_update_every=50 loss=mse --final-sessions 1 --eval-visual text
+```
+Episodes are one round long so every trajectory starts from a fresh LSTM state, the same as the greedy test.
+With long episodes of repeated rounds and `seq_len=1`, the greedy action can drift as the LSTM state moves
+into states it was never trained on.
 
 **Games (sec. 4.2):** 8 actions (forward/back/left/right, rotate ×2, beam, noop); observation is an
 egocentric RGB window, default 3×5×5 (4 ahead, 2 each side).
@@ -142,6 +203,7 @@ Games work the same way via `@register_env` and subclassing `GridWorld`. See `ex
 | `04_train_headless_then_watch.py` | headless training, then text/GIF/window sessions |
 | `05_custom_agent.py` | plugging in new agents |
 | `06_compare_learners.py` | VDN vs independent vs centralised on fetch, switch and checkers, 3 seeds, plots + behaviour stats → `results/learner_comparison/` |
+| `07_matrix_qmix_qplex.py` | matrix games that separate VDN / QMIX / QPLEX, 8 seeds, plus a representation-only fit |
 
 `VDN_QUICK=1` makes every example finish in seconds (nothing is learned; it checks the plumbing).
 
