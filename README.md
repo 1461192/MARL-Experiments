@@ -5,7 +5,9 @@ A small, StarCraft-free testbed for **Value-Decomposition Networks** (Sunehag et
 mixing-network successors **QMIX** (Rashid et al., 2018, [arXiv:1803.11485](https://arxiv.org/abs/1803.11485))
 and **QPLEX** (Wang et al., 2021, [arXiv:2008.01062](https://arxiv.org/abs/2008.01062)), and the policy-gradient
 learner **MAPPO** (PPO, Schulman et al., 2017, [arXiv:1707.06347](https://arxiv.org/abs/1707.06347), set up for
-cooperative multi-agent games as in Yu et al., 2022, [arXiv:2103.01955](https://arxiv.org/abs/2103.01955)).
+cooperative multi-agent games as in Yu et al., 2022, [arXiv:2103.01955](https://arxiv.org/abs/2103.01955)),
+and **adaptive TD(λ)** variants of QMIX, QPLEX and MAPPO (Deng, Wang & Zhang, 2026,
+[arXiv:2605.11880](https://arxiv.org/abs/2605.11880)).
 Pure Python + PyTorch + NumPy; runs on one CPU core.
 
 ```
@@ -15,10 +17,10 @@ vdn_lab/
   agents/       base.py (Agent interface)  networks.py  recurrent_dqn.py  vdn.py
                 independent.py  centralized.py  baselines.py  replay.py
                 mixers.py (QMIX / QPLEX mixing networks)  mixing.py (qmix / qplex agents)
-                mappo.py (MAPPO / IPPO)  macpf.py (MACPF)
+                mappo.py (MAPPO / IPPO)  macpf.py (MACPF)  atd.py (adaptive TD(λ) variants)
   experiment/   config.py  runner.py  benchmark.py  render.py
   cli.py        python -m vdn_lab ...
-examples/       nine runnable examples      tests/   pytest suite
+examples/       ten runnable examples      tests/   pytest suite
 ```
 
 ## Install / run
@@ -53,6 +55,8 @@ forward-view λ-returns over trajectories of 8, λ = 0.9, Adam (default lr 1e-4)
 | `mappo` | PPO policies per agent + a centralised critic (see below) |
 | `ippo` | the same PPO learner, each agent's critic sees only its own observations |
 | `macpf` | multi-agent conditional policy factorisation: dependent policies in training, independent ones at execution (see below) |
+| `qmix_atd`, `qplex_atd`, `vdn_atd` | the same learners with adaptive TD(λ): λ per state-action pair in the λ-returns (see below) |
+| `mappo_atd` | MAPPO with adaptive λ in GAE (see below) |
 
 Not implemented: the information-channel variants (low/high-level communication) from Table 1.
 
@@ -322,6 +326,7 @@ Games work the same way via `@register_env` and subclassing `GridWorld`. See `ex
 | `07_matrix_qmix_qplex.py` | matrix games that separate VDN / QMIX / QPLEX, 8 seeds, plus a representation-only fit |
 | `08_fetch_mappo_vs_vdn.py` | MAPPO vs VDN (and IPPO) on fetch `open` and `single`, 3 seeds → `results/mappo_vs_vdn/` |
 | `09_fetch_macpf.py` | MACPF (FOP and QMIX mixers) vs MAPPO / IPPO / VDN on fetch `open` and `single` → `results/macpf_vs_baselines/` |
+| `10_fetch_adaptive_lambda.py` | adaptive TD(λ) for QMIX / QPLEX / MAPPO vs the base learners and VDN on fetch `open` and `single` → `results/atd_vs_baselines/` |
 
 `VDN_QUICK=1` makes every example finish in seconds (nothing is learned; it checks the plumbing).
 
