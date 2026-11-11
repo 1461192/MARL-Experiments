@@ -1,0 +1,439 @@
+[
+  {
+    "variant": "macpf",
+    "seeds": 3,
+    "train_auc": 22.52,
+    "train_auc_std": 3.63,
+    "train_final": 61.96,
+    "train_final_std": 1.29,
+    "greedy_final": 96.93,
+    "greedy_final_std": 21.45,
+    "greedy_per_seed": [
+      126.6,
+      87.6,
+      76.6
+    ],
+    "agent_return_per_seed": [
+      [
+        61.6,
+        79.0
+      ],
+      [
+        6.4,
+        81.2
+      ],
+      [
+        39.2,
+        31.0
+      ]
+    ],
+    "idle_rate_per_seed": [
+      [
+        0.144,
+        0.178
+      ],
+      [
+        0.094,
+        0.084
+      ],
+      [
+        0.135,
+        0.132
+      ]
+    ],
+    "beam_freq_per_seed": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "noop_freq_per_seed": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "cells_visited_per_seed": [
+      [
+        18,
+        16
+      ],
+      [
+        21,
+        19
+      ],
+      [
+        23,
+        23
+      ]
+    ],
+    "dep_greedy_final": 91.6,
+    "dep_greedy_per_seed": [
+      130.8,
+      70.2,
+      73.8
+    ]
+  },
+  {
+    "variant": "macpf_qmix",
+    "seeds": 3,
+    "train_auc": 18.53,
+    "train_auc_std": 5.16,
+    "train_final": 46.95,
+    "train_final_std": 9.69,
+    "greedy_final": 34.93,
+    "greedy_final_std": 40.72,
+    "greedy_per_seed": [
+      3.0,
+      9.4,
+      92.4
+    ],
+    "agent_return_per_seed": [
+      [
+        3.0,
+        0.0
+      ],
+      [
+        6.2,
+        4.8
+      ],
+      [
+        47.6,
+        43.8
+      ]
+    ],
+    "idle_rate_per_seed": [
+      [
+        0.416,
+        0.299
+      ],
+      [
+        0.35,
+        0.358
+      ],
+      [
+        0.331,
+        0.335
+      ]
+    ],
+    "beam_freq_per_seed": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "noop_freq_per_seed": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "cells_visited_per_seed": [
+      [
+        14,
+        11
+      ],
+      [
+        18,
+        12
+      ],
+      [
+        15,
+        14
+      ]
+    ],
+    "dep_greedy_final": 41.33,
+    "dep_greedy_per_seed": [
+      3.0,
+      24.8,
+      96.2
+    ]
+  },
+  {
+    "variant": "mappo",
+    "seeds": 3,
+    "train_auc": 141.44,
+    "train_auc_std": 30.38,
+    "train_final": 195.5,
+    "train_final_std": 43.62,
+    "greedy_final": 198.0,
+    "greedy_final_std": 43.23,
+    "greedy_per_seed": [
+      164.0,
+      171.0,
+      259.0
+    ],
+    "agent_return_per_seed": [
+      [
+        80.2,
+        82.2
+      ],
+      [
+        88.0,
+        83.0
+      ],
+      [
+        131.0,
+        128.0
+      ]
+    ],
+    "idle_rate_per_seed": [
+      [
+        0.05,
+        0.04
+      ],
+      [
+        0.0,
+        0.01
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "beam_freq_per_seed": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "noop_freq_per_seed": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "cells_visited_per_seed": [
+      [
+        19,
+        19
+      ],
+      [
+        11,
+        14
+      ],
+      [
+        13,
+        14
+      ]
+    ]
+  },
+  {
+    "variant": "ippo",
+    "seeds": 3,
+    "train_auc": 151.44,
+    "train_auc_std": 29.28,
+    "train_final": 213.77,
+    "train_final_std": 29.65,
+    "greedy_final": 216.33,
+    "greedy_final_std": 30.17,
+    "greedy_per_seed": [
+      259.0,
+      195.0,
+      195.0
+    ],
+    "agent_return_per_seed": [
+      [
+        131.0,
+        128.0
+      ],
+      [
+        99.0,
+        96.0
+      ],
+      [
+        96.0,
+        99.0
+      ]
+    ],
+    "idle_rate_per_seed": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.01
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "beam_freq_per_seed": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "noop_freq_per_seed": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "cells_visited_per_seed": [
+      [
+        16,
+        12
+      ],
+      [
+        15,
+        13
+      ],
+      [
+        15,
+        12
+      ]
+    ]
+  },
+  {
+    "variant": "vdn",
+    "seeds": 3,
+    "train_auc": 74.34,
+    "train_auc_std": 6.82,
+    "train_final": 119.43,
+    "train_final_std": 14.96,
+    "greedy_final": 139.67,
+    "greedy_final_std": 19.6,
+    "greedy_per_seed": [
+      155.0,
+      112.0,
+      152.0
+    ],
+    "agent_return_per_seed": [
+      [
+        0.0,
+        155.0
+      ],
+      [
+        112.0,
+        0.0
+      ],
+      [
+        152.0,
+        0.0
+      ]
+    ],
+    "idle_rate_per_seed": [
+      [
+        0.005,
+        0.0
+      ],
+      [
+        0.0,
+        1.0
+      ],
+      [
+        0.005,
+        0.945
+      ]
+    ],
+    "beam_freq_per_seed": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "noop_freq_per_seed": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.005
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "cells_visited_per_seed": [
+      [
+        3,
+        11
+      ],
+      [
+        12,
+        1
+      ],
+      [
+        11,
+        10
+      ]
+    ]
+  }
+]
