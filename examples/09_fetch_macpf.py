@@ -1,0 +1,152 @@
+"""Example 9 - MACPF vs MAPPO, IPPO and VDN on Fetch.
+
+Trains MACPF (multi-agent conditional policy factorisation, Wang et al. 2023) with the
+hyper-parameters of the paper's appendix C / reference config on every Fetch map given (default
+``open`` and ``single``), over the same three seeds, budget and episode settings as examples 6
+and 8. The baselines (``vdn``, ``mappo``, ``ippo``) are taken from the saved runs of example 8
+(``results/mappo_vs_vdn/<map>/runs``) when they are there, and trained otherwise.
+
+MACPF acts with its *independent* policies at evaluation time (decentralised execution). For
+reference, every MACPF run is also evaluated with its *dependent* policies (agent 1 sees agent
+0's action; centralised execution), which shows how much is lost by the factorisation.
+
+Tables, plots and GIFs go to ``results/macpf_vs_baselines/<map>/``.
+
+    python examples/09_fetch_macpf.py                 # open + single
+    python examples/09_fetch_macpf.py open            # one map
+    python examples/09_fetch_macpf.py --replot        # rebuild figures from saved runs
+    VDN_QUICK=1 python examples/09_fetch_macpf.py     # plumbing smoke test
+"""
+from __future__ import annotations
+
+import importlib
+import json
+import os
+import shutil
+import sys
+from concurrent.futures import ProcessPoolExecutor
+from pathlib import Path
+
+import numpy as np
+
+from _common import QUICK, budget, hp  # noqa: E402
+
+cmp = importlib.import_module("06_compare_learners")      # workers, behaviour stats, plots, tables
+
+ROOT = Path(__file__).resolve().parents[1] / "results" / "macpf_vs_baselines"
+BASELINE_ROOT = Path(__file__).resolve().parents[1] / "results" / "mappo_vs_vdn"
+ALGOS = ["macpf", "mappo", "ippo", "vdn"]
+cmp.COLORS.update({"mappo": "#c0392b", "ippo": "#8e44ad", "macpf": "#16a085"})
+SEEDS = cmp.SEEDS
+STEPS = budget(200_000)
+
+
+def variants(steps: int):
+    quick_ppo = dict(rollout_len=500, ppo_epochs=2) if QUICK else {}
+    quick_macpf = dict(batch_size=2, max_train_len=50) if QUICK else {}
+    return {
+        "macpf": {"agent": "macpf", "agent_kwargs": quick_macpf},   # appendix-C defaults
+        "mappo": {"agent": "mappo", "agent_kwargs": quick_ppo},
+        "ippo": {"agent": "ippo", "agent_kwargs": quick_ppo},
+        "vdn": {"agent": "vdn", "agent_kwargs": hp(steps)},
+    }
+
+
+def _load_runs(run_root: Path):
+    results = {}
+    for f in sorted(run_root.glob("*/result.json")):
+        res = json.loads(f.read_text())
+        results.setdefault(res["config"]["name"].rsplit("_s", 1)[0], []).append(res)
+    return results
+
+
+def _dep_eval(args):
+    """Greedy evaluation of a trained MACPF run with its dependent (centralised) policies."""
+    run_dir, sessions = args
+    import torch
+    torch.set_num_threads(1)
+    from vdn_lab.experiment import Experiment
+    exp = Experiment.from_run_dir(run_dir, verbose=0, agent_kwargs={"eval_policy": "dep"})
+    return run_dir, exp.evaluate(sessions)
+
+
+def main(maps):
+    from vdn_lab.experiment import ExperimentConfig
+    jobs, reused = [], {m: {} for m in maps}
+    for m in maps:
+        base = ExperimentConfig(env="fetch", env_kwargs={"layout": m}, episode_len=200, eval_episode_len=200,
+                                train_steps=STEPS, eval_every=STEPS // 8, eval_episodes=3,
+                                final_eval_sessions=5, save_agent=True)
+        out = ROOT / m
+        out.mkdir(parents=True, exist_ok=True)
+        saved = {} if QUICK else _load_runs(BASELINE_ROOT / m / "runs")
+        for label, ov in variants(STEPS).items():
+            have = saved.get(label, [])
+            if label != "macpf" and sorted(r["config"]["seed"] for r in have) == SEEDS \
+                    and all(r["config"]["train_steps"] == STEPS for r in have):
+                reused[m][label] = have
+                continue
+            cfg = base.replace(**ov)
+            for seed in SEEDS:
+                jobs.append((m, label, seed, cfg.to_dict(), str(out / "runs")))
+    for m in maps:
+        if reused[m]:
+            print(f"[{m}] reusing saved runs of example 8 for: {sorted(reused[m])}")
+    results = {m: dict(reused[m]) for m in maps}
+    workers = int(os.environ.get("VDN_WORKERS", os.cpu_count() or 1))
+    with ProcessPoolExecutor(workers) as pool:
+        for m, label, seed, res in pool.map(cmp._train_one, jobs):
+            results[m].setdefault(label, []).append(res)
+        dep_jobs = [(r["run_dir"], 5) for m in maps for r in results[m].get("macpf", [])]
+        dep = dict(pool.map(_dep_eval, dep_jobs))
+        gif_jobs = []
+        for m in maps:
+            for r in results[m].get("macpf", []):
+                r["dep_eval"] = dep[r["run_dir"]]
+                Path(r["run_dir"], "result.json").write_text(json.dumps(r, indent=2))
+            for label, runs in results[m].items():
+                best = max(runs, key=lambda r: r["final_eval"]["mean_return"])
+                if label == "macpf" or not (ROOT / m / f"{label}_best_seed.gif").exists():
+                    gif_jobs.append((best["run_dir"], str(ROOT / m / f"{label}_best_seed.gif")))
+        list(pool.map(cmp._gif_one, gif_jobs))
+    for m in maps:
+        report(m, results[m])
+
+
+def report(m, results):
+    out = ROOT / m
+    results = {a: results[a] for a in ALGOS if a in results}
+    cmp.plot_game(f"fetch ({m})", results, out, STEPS)
+    rows = cmp.summarise_game(f"fetch ({m})", results, out)
+    macpf = results.get("macpf", [])
+    if macpf and all("dep_eval" in r for r in macpf):
+        ind = np.array([r["final_eval"]["mean_return"] for r in macpf])
+        dep = np.array([r["dep_eval"]["mean_return"] for r in macpf])
+        extra = ["", "MACPF greedy return, independent policies (decentralised execution) vs dependent "
+                 "policies (agent 1 sees agent 0's action):", "",
+                 "| policy | mean ± std | per seed |", "|---|---|---|",
+                 f"| independent | {ind.mean():.2f} ± {ind.std():.2f} | {[round(float(v), 1) for v in ind]} |",
+                 f"| dependent | {dep.mean():.2f} ± {dep.std():.2f} | {[round(float(v), 1) for v in dep]} |"]
+        with open(out / "summary.md", "a") as f:
+            f.write("\n".join(extra) + "\n")
+        print("\n".join(extra))
+        for r in rows:
+            if r["variant"] == "macpf":
+                r["dep_greedy_final"], r["dep_greedy_per_seed"] = round(dep.mean(), 2), [round(float(v), 1) for v in dep]
+        (out / "summary.json").write_text(json.dumps(rows, indent=2))
+
+
+def replot(maps):
+    for m in maps:
+        results = _load_runs(BASELINE_ROOT / m / "runs")
+        results.update(_load_runs(ROOT / m / "runs"))
+        report(m, results)
+
+
+if __name__ == "__main__":
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    maps = args or ["open", "single"]
+    if QUICK:
+        ROOT = ROOT.parent / "_quick_macpf"
+        shutil.rmtree(ROOT, ignore_errors=True)
+    replot(maps) if "--replot" in sys.argv else main(maps)
