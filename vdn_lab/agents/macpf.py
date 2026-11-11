@@ -41,9 +41,15 @@ At execution time only ``pi_i^ind`` is used, so every agent acts on its own hist
 ``Linear(64) -> ReLU -> GRU(64) -> Linear(n_actions)`` on ``[obs, last action, agent id]``.
 The dependency correction embeds every preceding agent's ``[id, action]`` one-hot with
 ``ELU(Linear(64))``, sums them divided by ``n_agents``, concatenates the GRU state and maps
-that to ``n_actions`` (the first agent gets a zero embedding). The mixers are QMIX-style
-monotonic hypernetwork mixers (two-layer hypernetworks, embed 64) of the global state; the
-testbed has no global state, so it is the concatenation of every agent's observation.
+that to ``n_actions`` (the first agent gets a zero embedding).
+
+**Mixers.** ``mixer="fop"`` (default) is FOP's decomposition, which sec. 3 builds on:
+``Q_jt = V_jt + sum_i lambda_i w_i (Q_i - V_i)`` with soft values ``V_i = alpha logsumexp(Q_i/alpha)``
+(see ``FOPMixer``). ``mixer="qmix"`` is what the released MACPF code uses instead: a QMIX-style
+monotonic hypernetwork mixer (two-layer hypernetworks, embed 64; ``HyperMixer``). With it the
+first agent's utility is not identified (the last agent's dependent Q can absorb the whole
+joint value), and on the climbing matrix game the first agent then never learns its part.
+The testbed has no global state, so the mixers' state is all agents' observations concatenated.
 
 **Hyper-parameters (appendix C / the reference config ``dfop.yaml``).** RMSprop
 (lr 5e-4 actor and critic, alpha 0.99, eps 1e-5), grad-norm clip 10, gamma 0.99, TD(lambda)
@@ -94,6 +100,9 @@ class MACPFConfig:
     eps_anneal_steps: int = 50_000
     obs_last_action: bool = True
     obs_agent_id: bool = True
+    mixer: str = "fop"                  # "fop": FOP's attention mixer (sec. 3) | "qmix": the reference code's monotonic mixer
+    n_head: int = 4                     # attention heads of the FOP mixer (both attention modules)
+    attend_reg_coef: float = 0.001      # penalty on the FOP mixer's attention logits
     shared_mixer: bool = False          # True: one mixer for Q^ind and Q^dep (as the reference code ends up doing)
     eval_policy: str = "ind"            # act(explore=False) with "ind" (decentralised) or "dep" (needs a_<i)
     max_train_len: Optional[int] = None  # train on random windows of this many steps (None: whole episodes)
@@ -152,6 +161,55 @@ class HyperMixer(nn.Module):
         return (hidden * w2).sum(-1) + self.V(state).squeeze(-1)
 
 
+class FOPMixer(nn.Module):
+    """FOP's mixer (Zhang et al. 2021; reference ``FOPMixer``), the decomposition MACPF sec. 3 builds on:
+
+        Q_jt = sum_i [w_i(s) Q_i + V(s)/d]  +  sum_i (lambda_i(s, a) - 1) * stopgrad(w_i(s) (Q_i - V_i)),
+
+    i.e. ``Q_jt = V_jt + sum_i lambda_i w_i (Q_i - V_i)`` with ``V_jt = sum_i w_i V_i + V(s)``, where
+    ``V_i = alpha logsumexp(Q_i / alpha)`` is agent i's soft value, ``w_i > 0`` are Qatten attention
+    weights (state selector vs. per-agent "unit" keys, softmax over agents, summed over heads) and
+    ``lambda_i > 0`` are QPLEX-style weights of state and joint action. The per-agent soft
+    advantages ``Q_i - V_i`` then add up to the joint one, so each agent's Boltzmann policy of
+    its own Q is its factor of the joint Boltzmann policy. The unit features are each agent's
+    observation (the "state" is all observations concatenated)."""
+
+    def __init__(self, n_agents: int, n_actions: int, unit_dim: int, embed: int, hyper_embed: int, n_head: int,
+                 attend_reg_coef: float):
+        super().__init__()
+        d = n_agents
+        self.n_agents, self.unit_dim, self.embed, self.reg = d, unit_dim, embed, attend_reg_coef
+        state_dim = d * unit_dim
+        self.selectors = nn.ModuleList(nn.Sequential(nn.Linear(state_dim, hyper_embed), nn.ReLU(),
+                                                     nn.Linear(hyper_embed, embed, bias=False)) for _ in range(n_head))
+        self.key_ext = nn.ModuleList(nn.Linear(unit_dim, embed, bias=False) for _ in range(n_head))
+        self.lam_keys = nn.ModuleList(nn.Linear(state_dim, 1) for _ in range(n_head))
+        self.lam_agents = nn.ModuleList(nn.Linear(state_dim, d) for _ in range(n_head))
+        self.lam_actions = nn.ModuleList(nn.Linear(state_dim + d * n_actions, d) for _ in range(n_head))
+        self.V = nn.Sequential(nn.Linear(state_dim, embed), nn.ReLU(), nn.Linear(embed, 1))
+        self.last_reg = torch.zeros(())
+
+    def forward(self, q: torch.Tensor, state: torch.Tensor, actions_onehot: torch.Tensor,
+                vs: torch.Tensor) -> torch.Tensor:
+        """q, vs ``(B, T, d)``; state ``(B, T, S)``; actions_onehot ``(B, T, d, nA)`` -> ``(B, T)``."""
+        d = self.n_agents
+        units = state.view(*state.shape[:-1], d, self.unit_dim)
+        w, reg = 0.0, 0.0
+        for sel, kx in zip(self.selectors, self.key_ext):
+            logits = (kx(units) @ sel(state).unsqueeze(-1)).squeeze(-1)          # (B, T, d)
+            w = w + torch.softmax(logits / np.sqrt(self.embed), -1)
+            reg = reg + (logits ** 2).mean()
+        self.last_reg = self.reg * reg
+        w = w + 1e-10
+        sa = torch.cat([state, actions_onehot.flatten(-2)], -1)
+        lam = 0.0
+        for k, ag, ac in zip(self.lam_keys, self.lam_agents, self.lam_actions):
+            lam = lam + (k(state).abs() + 1e-10) * torch.sigmoid(ag(state)) * torch.sigmoid(ac(sa))
+        adv = (w * (q - vs)).detach()
+        v_tot = (w * q).sum(-1) + self.V(state).squeeze(-1)                     # sum_i (w_i Q_i + V/d)
+        return v_tot + (adv * (lam - 1)).sum(-1)
+
+
 def td_lambda_targets(rewards: torch.Tensor, mask: torch.Tensor, target_q: torch.Tensor,
                       gamma: float, lam: float) -> torch.Tensor:
     """Forward-view lambda-returns (pymarl ``build_td_lambda_targets``, no terminal states).
@@ -189,9 +247,17 @@ class MACPFAgent(Agent):
         self.actor = DependentNet(in_dim, d, nA, c.hidden, c.dep_embed_dim).to(device)
         self.critic = DependentNet(in_dim, d, nA, c.hidden, c.dep_embed_dim).to(device)
         state_dim = d * self.obs_dim
-        self.mixer_ind = HyperMixer(d, state_dim, c.mixing_embed_dim, c.hypernet_embed).to(device)
-        self.mixer_dep = self.mixer_ind if c.shared_mixer else \
-            HyperMixer(d, state_dim, c.mixing_embed_dim, c.hypernet_embed).to(device)
+        if c.mixer not in ("fop", "qmix"):
+            raise ValueError("mixer must be 'fop' or 'qmix'")
+
+        def make_mixer() -> nn.Module:
+            if c.mixer == "fop":
+                return FOPMixer(d, nA, self.obs_dim, c.mixing_embed_dim, c.hypernet_embed, c.n_head,
+                                c.attend_reg_coef).to(device)
+            return HyperMixer(d, state_dim, c.mixing_embed_dim, c.hypernet_embed).to(device)
+
+        self.mixer_ind = make_mixer()
+        self.mixer_dep = self.mixer_ind if c.shared_mixer else make_mixer()
         self.target_critic = copy.deepcopy(self.critic)
         self.target_mixer_ind = copy.deepcopy(self.mixer_ind)
         self.target_mixer_dep = self.target_mixer_ind if c.shared_mixer else copy.deepcopy(self.mixer_dep)
@@ -403,8 +469,7 @@ class MACPFAgent(Agent):
         with torch.no_grad():
             probs, next_a = self._sequential_policy(self._gru(self.actor, x), dep, self.epsilon)   # (B, T+1, d, ...)
             tq = self._critic_q(self.target_critic, self._gru(self.target_critic, x), next_a, dep)
-            tq_taken = tq.gather(-1, next_a.unsqueeze(-1)).squeeze(-1)                          # (B, T+1, d)
-            target_q = target_mixer(tq_taken, state)                                           # (B, T+1)
+            target_q = self._mix(target_mixer, tq, next_a, state)                              # (B, T+1)
             # bootstrap of a shorter (padded) episode: its own final step's value
             lengths = mask.sum(1).long()
             ar = torch.arange(T1, device=x.device)
@@ -414,16 +479,24 @@ class MACPFAgent(Agent):
             logp_next = torch.log(probs.gather(-1, next_a.unsqueeze(-1)).squeeze(-1).clamp(min=1e-10))
             targets = targets - c.alpha * logp_next[:, 1:].mean(-1)
         q = self._critic_q(self.critic, self._gru(self.critic, x[:, :-1]), actions[:, :-1], dep)
-        q_taken = q.gather(-1, actions[:, :-1].unsqueeze(-1)).squeeze(-1)
-        q_jt = mixer(q_taken, state[:, :-1])
+        q_jt = self._mix(mixer, q, actions[:, :-1], state[:, :-1])
         td = (q_jt - targets) * mask
         loss = (td ** 2).sum() / mask.sum()
         self.critic_opt.zero_grad(set_to_none=True)
-        loss.backward()
+        (loss + getattr(mixer, "last_reg", 0.0)).backward()
         gn = nn.utils.clip_grad_norm_(self.critic_params, c.grad_norm_clip)
         self.critic_opt.step()
         return {f"critic_loss_{sfx}": loss.item(), f"q_jt_{sfx}": (q_jt * mask).sum().item() / mask.sum().item(),
                 f"critic_grad_{sfx}": float(gn)}
+
+    def _mix(self, mixer: nn.Module, q: torch.Tensor, actions: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
+        """Joint soft Q of ``actions`` from the per-agent ``q`` ``(B, T, d, nA)``."""
+        q_taken = q.gather(-1, actions.unsqueeze(-1)).squeeze(-1)
+        if isinstance(mixer, FOPMixer):
+            a = self.cfg.alpha
+            vs = a * torch.logsumexp(q / a, -1)
+            return mixer(q_taken, state, F.one_hot(actions, self.n_actions).float(), vs)
+        return mixer(q_taken, state)
 
     def _update_targets(self) -> None:
         self.target_critic.load_state_dict(self.critic.state_dict())
@@ -459,4 +532,4 @@ class MACPFAgent(Agent):
     def describe(self) -> str:
         c = self.cfg
         return (f"MACPFAgent(batch={c.batch_size} eps, td_lambda={c.td_lambda}, alpha={c.alpha}, "
-                f"shared_mixer={c.shared_mixer}, eval={c.eval_policy})")
+                f"mixer={c.mixer}, shared_mixer={c.shared_mixer}, eval={c.eval_policy})")

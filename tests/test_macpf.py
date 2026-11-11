@@ -25,12 +25,13 @@ def rollout(agent, episodes, ep_len=13, seed=0):
     return metrics
 
 
-@pytest.mark.parametrize("kw", [{}, dict(shared_mixer=True), dict(max_train_len=5),
+@pytest.mark.parametrize("kw", [{}, dict(mixer="qmix"), dict(shared_mixer=True), dict(max_train_len=5),
                                 dict(obs_last_action=False, obs_agent_id=False), dict(eval_policy="dep")])
 def test_macpf_acts_and_learns(kw):
     agent = make_agent("macpf", **SPEC, seed=0, batch_size=4, **kw)
     m = rollout(agent, 6)
     assert agent.n_updates == 3 and len(agent.buffer) == 6
+    assert (agent.mixer_dep is agent.mixer_ind) == bool(kw.get("shared_mixer"))
     for k in ("policy_loss_ind", "policy_loss_dep", "critic_loss_ind", "critic_loss_dep", "loss"):
         assert np.isfinite(m[k]), k
     agent.reset_episode()
@@ -89,3 +90,23 @@ def test_macpf_save_load_and_runner(tmp_path):
         assert torch.equal(v, exp2.agent.actor.state_dict()[k])
     assert exp2.agent.cfg.eval_policy == "dep"
     exp2.evaluate(1)
+
+
+def test_fop_mixer_value_and_advantage_split():
+    """Q_jt = sum_i (w_i Q_i + V/d) + sum_i (lambda_i - 1) w_i (Q_i - V_i): at the greedy joint
+    action (Q_i = V_i for alpha -> 0) the lambda term vanishes."""
+    from vdn_lab.agents.macpf import FOPMixer
+    torch.manual_seed(0)
+    mix = FOPMixer(2, 8, 75, 16, 16, 4, 0.001)
+    q = torch.randn(3, 5, 2, 8)
+    state = torch.rand(3, 5, 150)
+    greedy = q.argmax(-1)
+    vs = q.max(-1).values
+    onehot = torch.nn.functional.one_hot(greedy, 8).float()
+    q_jt = mix(vs, state, onehot, vs)
+    other = mix(vs, state, torch.roll(onehot, 1, -1), vs)          # lambda changes, advantages are 0
+    assert torch.allclose(q_jt, other)
+    a = (greedy + 1) % 8
+    qa = q.gather(-1, a.unsqueeze(-1)).squeeze(-1)
+    assert not torch.allclose(mix(qa, state, torch.nn.functional.one_hot(a, 8).float(), vs),
+                              mix(qa, state, torch.roll(torch.nn.functional.one_hot(a, 8).float(), 1, -1), vs))
