@@ -178,20 +178,27 @@ class ValueNorm(nn.Module):
 
 
 def gae(rewards: np.ndarray, values: np.ndarray, next_values: np.ndarray, dones: np.ndarray,
-        gamma: float, lam: float) -> np.ndarray:
+        gamma: float, lam) -> np.ndarray:
     """Generalised advantage estimation over a rollout (PPO paper eq. 11-12).
 
     rewards ``(T,)``, values ``(T, d)``: V(o_t). ``next_values[t]`` is V(o_{t+1}) and is only read
     where the episode ended at t (``dones[t]``) or at the last step of the rollout; elsewhere
-    V(o_{t+1}) = ``values[t+1]``. The advantage does not run on across an episode end."""
+    V(o_{t+1}) = ``values[t+1]``. The advantage does not run on across an episode end.
+
+    ``lam`` is a float or (adaptive TD(lambda)) an array ``(T,)`` / ``(T, d)`` where ``lam[t]`` weighs
+    ``A_{t+1}`` in ``A_t = delta_t + gamma * lam[t] * A_{t+1}``, i.e. it belongs to step t+1."""
     T = len(rewards)
     adv = np.zeros_like(values)
     last = np.zeros(values.shape[1:], dtype=values.dtype)
+    lam_t = np.asarray(lam, dtype=values.dtype)
+    if lam_t.ndim == 1:                                   # one lambda per step, shared by the agents
+        lam_t = lam_t.reshape(T, *(1,) * (values.ndim - 1))
+    lam_t = np.broadcast_to(lam_t, values.shape)
     for t in reversed(range(T)):
         cut = dones[t] or t == T - 1
         nv = next_values[t] if cut else values[t + 1]
         delta = rewards[t] + gamma * nv - values[t]
-        last = delta + (0.0 if cut else gamma * lam) * last
+        last = delta + (0.0 if cut else gamma * lam_t[t]) * last
         adv[t] = last
     return adv
 
@@ -340,7 +347,8 @@ class MAPPOAgent(Agent):
         vn = self.value_norm
         # value predictions were stored on the normalised scale of collection time
         old_v = self._denorm(torch.from_numpy(b["values"]).to(dev))
-        adv = gae(b["rewards"], old_v.cpu().numpy(), b["next_values"], b["dones"], c.gamma, c.gae_lambda)
+        lam = self._gae_lambda()
+        adv = gae(b["rewards"], old_v.cpu().numpy(), b["next_values"], b["dones"], c.gamma, lam)
         adv_t = torch.from_numpy(adv).to(dev)
         returns = adv_t + old_v
         if c.value_norm:
@@ -404,6 +412,11 @@ class MAPPOAgent(Agent):
         out["loss"] = out["policy_loss"] + c.value_loss_coef * out["value_loss"]
         out["return_mean"] = float(returns.mean().item())
         return out
+
+    def _gae_lambda(self):
+        """lambda for GAE over the current rollout: the fixed ``gae_lambda``, or (adaptive TD(lambda),
+        ``atd.py``) an array ``(T,)`` as described in ``gae``."""
+        return self.cfg.gae_lambda
 
     def _value_loss(self, v: torch.Tensor, old_v: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         c = self.cfg

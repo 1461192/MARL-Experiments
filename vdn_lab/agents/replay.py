@@ -18,6 +18,7 @@ class SequenceReplay:
         self.act = np.zeros((capacity, n_agents), dtype=np.int64)
         self.rew = np.zeros(capacity, dtype=np.float32)
         self.ep = np.full(capacity, -1, dtype=np.int64)
+        self.valid = np.zeros(capacity, dtype=bool)        # a real transition (not an episode's final obs)
         self.ptr = 0
         self.size = 0
         self.ep_id = 0
@@ -26,9 +27,9 @@ class SequenceReplay:
     def __len__(self) -> int:
         return self.size
 
-    def _push(self, obs, act, rew) -> None:
+    def _push(self, obs, act, rew, valid: bool = True) -> None:
         i = self.ptr
-        self.obs[i], self.act[i], self.rew[i], self.ep[i] = obs, act, rew, self.ep_id
+        self.obs[i], self.act[i], self.rew[i], self.ep[i], self.valid[i] = obs, act, rew, self.ep_id, valid
         self.ptr = (self.ptr + 1) % self.cap
         self.size = min(self.size + 1, self.cap)
 
@@ -36,7 +37,7 @@ class SequenceReplay:
         self._push(obs, actions, reward)
 
     def end_episode(self, final_obs: np.ndarray) -> None:
-        self._push(final_obs, 0, 0.0)
+        self._push(final_obs, 0, 0.0, valid=False)
         self.ep_id += 1
 
     def sample(self, batch: int, window: int) -> Dict[str, np.ndarray]:
@@ -60,3 +61,26 @@ class SequenceReplay:
             raise RuntimeError("could not sample valid windows (episodes shorter than the window?)")
         idx = np.stack(chosen[:batch])
         return dict(obs=self.obs[idx], actions=self.act[idx[:, :-1]], rewards=self.rew[idx[:, :-1]])
+
+    def sample_steps(self, batch: int, recent: Optional[int] = None) -> Dict[str, np.ndarray]:
+        """Single transitions, uniformly from the whole buffer or (``recent=N``) from the N newest
+        entries only - the "small, on-policy" buffer of adaptive TD(lambda) is the newest part of
+        this one. obs ``(B, n, *obs)``, actions ``(B, n)``."""
+        span = self.size if recent is None else min(recent, self.size)
+        if span <= 0:
+            raise RuntimeError("not enough data to sample")
+        chosen = []
+        for _ in range(100):
+            if recent is None and self.size == self.cap:
+                idx = self.rng.integers(0, self.cap, size=batch * 2)
+            elif recent is None:
+                idx = self.rng.integers(0, self.size, size=batch * 2)
+            else:
+                idx = (self.ptr - self.rng.integers(1, span + 1, size=batch * 2)) % self.cap
+            chosen.extend(idx[self.valid[idx]])
+            if len(chosen) >= batch:
+                break
+        else:
+            raise RuntimeError("could not sample transitions")
+        idx = np.asarray(chosen[:batch])
+        return dict(obs=self.obs[idx], actions=self.act[idx])
