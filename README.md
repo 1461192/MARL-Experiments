@@ -15,10 +15,10 @@ vdn_lab/
   agents/       base.py (Agent interface)  networks.py  recurrent_dqn.py  vdn.py
                 independent.py  centralized.py  baselines.py  replay.py
                 mixers.py (QMIX / QPLEX mixing networks)  mixing.py (qmix / qplex agents)
-                mappo.py (MAPPO / IPPO)
+                mappo.py (MAPPO / IPPO)  macpf.py (MACPF)
   experiment/   config.py  runner.py  benchmark.py  render.py
   cli.py        python -m vdn_lab ...
-examples/       eight runnable examples     tests/   pytest suite (89 tests)
+examples/       nine runnable examples      tests/   pytest suite
 ```
 
 ## Install / run
@@ -52,6 +52,7 @@ forward-view λ-returns over trajectories of 8, λ = 0.9, Adam (default lr 1e-4)
 | `qplex` | VDN's per-agent nets + QPLEX's duplex dueling mixing network (see below) |
 | `mappo` | PPO policies per agent + a centralised critic (see below) |
 | `ippo` | the same PPO learner, each agent's critic sees only its own observations |
+| `macpf` | multi-agent conditional policy factorisation: dependent policies in training, independent ones at execution (see below) |
 
 Not implemented: the information-channel variants (low/high-level communication) from Table 1.
 
@@ -162,6 +163,65 @@ python -m vdn_lab train --env fetch --map open --agent mappo --steps 200000 --ep
 python examples/08_fetch_mappo_vs_vdn.py           # VDN vs MAPPO vs IPPO, open + single, 3 seeds, ~30 min on 4 cores
 ```
 
+### MACPF (`vdn_lab/agents/macpf.py`)
+
+Wang, Ye & Lu, *More Centralized Training, Still Decentralized Execution: Multi-Agent Conditional Policy
+Factorization*, ICLR 2023 ([arXiv:2209.12681](https://arxiv.org/abs/2209.12681)), section 3, with details from
+the authors' code ([PKU-RL/FOP-DMAC-MACPF](https://github.com/PKU-RL/FOP-DMAC-MACPF), `dfop_*` modules).
+
+* **Conditional factorisation (sec. 3.1).** Maximum-entropy (FOP-style) actor-critic in which the joint policy
+  is `π_jt(a|τ) = Π_i π_i^dep(a_i | τ_i, a_<i)`: agent `i` sees the actions already chosen by agents `0..i-1`
+  during centralised training, so the policy class contains the optimal joint policy.
+* **Decentralised execution (sec. 3.2).** `π_i^dep = π_i^ind + b_i^dep` (logits; stop-gradient on the independent
+  part) and `Q_i^dep = Q_i^ind + c_i^dep`. Two joint critics (`Q_jt^dep`, `Q_jt^ind`, each with its own mixer) and
+  four losses: soft TD(λ) for each critic, and `E_π[α log π_i − Q_i]` for each policy. The dependent joint policy
+  collects the data, so the independent policies are learned off-policy. At execution only `π_i^ind` is used.
+* **Networks.** Shared policy and critic: `Linear(64) → ReLU → GRU(64) → Linear` on `[obs, last action, id]`.
+  Dependency correction: `ELU(Linear(64))` embeddings of preceding agents' `[id, action]`, summed / n, concatenated
+  with the GRU state.
+* **Mixer.** `mixer="fop"` (default) is FOP's decomposition `Q_jt = V_jt + Σ λ_i w_i (Q_i − V_i)`, with
+  `V_i = α logsumexp(Q_i/α)`, Qatten weights `w_i` and QPLEX-style `λ_i(s,a)` (4 heads each). `mixer="qmix"` is
+  the monotonic hypernetwork mixer that the released MACPF code uses. With it the first agent's utility is not
+  identified, because the last agent's dependent Q can absorb the whole joint value. On fetch it did worse (below).
+* **Hyper-parameters (appendix C / `dfop.yaml`).** RMSprop lr 5e-4 (actor and critic), α 0.99, eps 1e-5;
+  grad clip 10; γ 0.99; TD(λ) 0.8; batches of 32 whole episodes; buffer of 5000 episodes; one training step per
+  episode; targets copied every 200 episodes; entropy temperature 0.001; embeddings 64. Exploration: ε-mixture
+  with uniform, 1.0 → 0.05 over 50k steps.
+
+The arXiv / OpenReview PDF could not be fetched from the environment these were written in. The paper-level
+description above is from the abstract and summaries, and the details are from the authors' code. Check them
+against appendix C if exact numbers matter.
+
+`act(explore=False)` uses the independent policies; `eval_policy="dep"` evaluates the dependent ones instead
+(centralised execution, for diagnosis).
+
+**MACPF vs MAPPO / IPPO / VDN on fetch** (`examples/09_fetch_macpf.py`, tables, plots and GIFs in
+`results/macpf_vs_baselines/`). Settings are those of example 8: 200k steps, 200-step episodes, seeds 0–2. The
+baseline runs are reused from `results/mappo_vs_vdn/`. Greedy return of the final policy over 5 sessions,
+mean ± std over seeds. "dep" is the same MACPF agent acting with its dependent policies.
+
+| map | `macpf` | `macpf` dep | `macpf_qmix` | `mappo` | `ippo` | `vdn` |
+|---|---|---|---|---|---|---|
+| `open` | 96.9 ± 21.5 | 91.6 ± 27.8 | 34.9 ± 40.7 | 198.0 ± 43.2 | **216.3 ± 30.2** | 139.7 ± 19.6 |
+| `single` | 1.0 ± 1.4 | 2.0 ± 1.4 | 0.0 ± 0.0 | 86.7 ± 16.5 | **104.1 ± 7.7** | 81.0 ± 10.7 |
+
+* With the paper's hyper-parameters and this budget, MACPF is the weakest learner on both maps. On `open` its
+  training return is still rising at 200k steps. On `single` (one corridor) it never gets past picking up an item.
+* The budget is a likely cause. One gradient step per 200-step episode gives MACPF only about 970 updates in
+  200k steps, while the paper's SMAC runs take millions of steps. Exploration is the other: an ε-mixture with
+  entropy temperature 0.001 has little to drive it through `single`'s corridor. I did not tune it for this task.
+* The decentralised (independent) policies match the dependent ones (96.9 vs 91.6 on `open`). Distillation itself
+  costs nothing here; the gap to the baselines comes from the learning speed of the dependent policy.
+* The FOP mixer did better than the released code's QMIX mixer (96.9 vs 34.9 on `open`, 3 seeds).
+* On the climbing matrix game, both mixers settle on the safe joint action. The dependent critic learns the
+  conditional best response (agent 1 plays `a` after `a`), but agent 0's utility does not.
+
+```bash
+python -m vdn_lab train --env fetch --map open --agent macpf --steps 200000 --episode-len 200 \
+       --eval-episode-len 200 --eval-every 25000 --final-sessions 3 --eval-visual window
+python examples/09_fetch_macpf.py                  # MACPF (both mixers) + reused baselines, ~25 min per variant on 4 cores
+```
+
 **Games (sec. 4.2):** 8 actions (forward/back/left/right, rotate ×2, beam, noop); observation is an
 egocentric RGB window, default 3×5×5 (4 ahead, 2 each side).
 
@@ -261,6 +321,7 @@ Games work the same way via `@register_env` and subclassing `GridWorld`. See `ex
 | `06_compare_learners.py` | VDN vs independent vs centralised on fetch, switch and checkers, 3 seeds, plots + behaviour stats → `results/learner_comparison/` |
 | `07_matrix_qmix_qplex.py` | matrix games that separate VDN / QMIX / QPLEX, 8 seeds, plus a representation-only fit |
 | `08_fetch_mappo_vs_vdn.py` | MAPPO vs VDN (and IPPO) on fetch `open` and `single`, 3 seeds → `results/mappo_vs_vdn/` |
+| `09_fetch_macpf.py` | MACPF (FOP and QMIX mixers) vs MAPPO / IPPO / VDN on fetch `open` and `single` → `results/macpf_vs_baselines/` |
 
 `VDN_QUICK=1` makes every example finish in seconds (nothing is learned; it checks the plumbing).
 
