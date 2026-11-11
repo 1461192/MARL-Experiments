@@ -7,6 +7,9 @@ ATD(lambda) variant over the same three seeds, budget and episode settings as ex
 * ``qplex`` vs ``qplex_atd``  - the same for QPLEX
 * ``mappo`` vs ``mappo_atd``  - per-step lambda in MAPPO's GAE (base lambda 0.95)
 * ``vdn``                     - reference
+* ``qmix_lam07``, ``qplex_lam07`` - controls: the base learners with a *fixed* lambda of 0.7, about
+                                the average lambda the ATD variants end up using, to separate the
+                                effect of adapting lambda per pair from that of a lower mean lambda
 
 QMIX and QPLEX use VDN's hyper-parameters (``_common.hp``), MAPPO the defaults of Yu et al. 2022.
 The ATD(lambda) variants add only the density-ratio estimator, with the defaults in
@@ -40,10 +43,11 @@ cmp = importlib.import_module("06_compare_learners")      # workers, behaviour s
 
 ROOT = Path(__file__).resolve().parents[1] / "results" / "atd_vs_baselines"
 BASELINE_ROOT = Path(__file__).resolve().parents[1] / "results" / "mappo_vs_vdn"
-ALGOS = ["qmix", "qmix_atd", "qplex", "qplex_atd", "mappo", "mappo_atd", "vdn"]
+ALGOS = ["qmix", "qmix_lam07", "qmix_atd", "qplex", "qplex_lam07", "qplex_atd", "mappo", "mappo_atd", "vdn"]
 ATD = ("qmix_atd", "qplex_atd", "mappo_atd")
 cmp.COLORS.update({"qmix": "#7f8c8d", "qmix_atd": "#16a085", "qplex": "#d4a017", "qplex_atd": "#e67e22",
-                   "mappo": "#c0392b", "mappo_atd": "#8e44ad"})
+                   "mappo": "#c0392b", "mappo_atd": "#8e44ad",
+                   "qmix_lam07": "#2c3e50", "qplex_lam07": "#a0522d"})
 SEEDS = cmp.SEEDS
 STEPS = budget(200_000)
 TRACE_EVERY = 10_000
@@ -55,7 +59,9 @@ def variants(steps: int):
     return {
         "qmix": {"agent": "qmix", "agent_kwargs": hp(steps)},
         "qmix_atd": {"agent": "qmix_atd", "agent_kwargs": hp(steps, **quick_atd)},
+        "qmix_lam07": {"agent": "qmix", "agent_kwargs": hp(steps, lam=0.7)},
         "qplex": {"agent": "qplex", "agent_kwargs": hp(steps)},
+        "qplex_lam07": {"agent": "qplex", "agent_kwargs": hp(steps, lam=0.7)},
         "qplex_atd": {"agent": "qplex_atd", "agent_kwargs": hp(steps, **quick_atd)},
         "mappo": {"agent": "mappo", "agent_kwargs": quick_ppo},
         "mappo_atd": {"agent": "mappo_atd", "agent_kwargs": {**quick_ppo, **quick_atd}},
@@ -120,7 +126,7 @@ def main(maps):
         if reused[m]:
             print(f"[{m}] reusing saved runs for: {sorted(reused[m])}")
     # longest jobs first so the pool does not end on one slow QPLEX run
-    order = {"qplex_atd": 0, "qplex": 1, "qmix_atd": 2, "qmix": 3, "vdn": 4, "mappo_atd": 5, "mappo": 6}
+    order = {"qplex_atd": 0, "qplex": 1, "qplex_lam07": 1, "qmix_atd": 2, "qmix": 3, "qmix_lam07": 3, "vdn": 4, "mappo_atd": 5, "mappo": 6}
     jobs.sort(key=lambda j: order.get(j[1], 9))
     results = {m: dict(reused[m]) for m in maps}
     workers = int(os.environ.get("VDN_WORKERS", os.cpu_count() or 1))
@@ -157,6 +163,11 @@ def report(m, results):
         ab = np.array([r["train_auc"] for r in results[b]])
         extra.append(f"| {b} | {[round(float(v), 1) for v in ga - gb]} | {(ga - gb).mean():+.1f} | "
                      f"{(aa - ab).mean():+.1f} |")
+        if f"{b}_lam07" in results:
+            gc = np.array([r["final_eval"]["mean_return"] for r in results[f"{b}_lam07"]])
+            ac = np.array([r["train_auc"] for r in results[f"{b}_lam07"]])
+            extra.append(f"| {b}_lam07 (fixed lambda 0.7) | {[round(float(v), 1) for v in ga - gc]} | "
+                         f"{(ga - gc).mean():+.1f} | {(aa - ac).mean():+.1f} |")
     extra += ["", "ATD(lambda) estimator over training (mean over seeds; acc = accuracy telling the small "
               "buffer from the large one, 0.5 = cannot tell them apart; lo / hi = fraction of lambdas clipped "
               "at lam_min / lam_max):", "",
