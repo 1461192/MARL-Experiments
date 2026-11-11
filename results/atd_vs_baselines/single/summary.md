@@ -3,8 +3,10 @@
 | learner | train AUC | train final 10% | greedy final | greedy per seed | per-agent reward (greedy) per seed |
 |---|---|---|---|---|---|
 | qmix | 7.15 ± 7.42 | 18.47 ± 23.5 | 25.0 ± 33.26 | [72.0, 3.0, 0.0] | [[72.0, 0.0], [3.0, 0.0], [0.0, 0.0]] |
+| qmix_lam07 | 17.57 ± 11.02 | 36.39 ± 26.17 | 15.87 ± 12.06 | [12.6, 32.0, 3.0] | [[0.0, 35.4], [32.0, 0.0], [3.0, 0.0]] |
 | qmix_atd | 17.62 ± 21.4 | 28.59 ± 35.46 | 31.33 ± 40.07 | [88.0, 3.0, 3.0] | [[0.0, 88.0], [0.0, 3.0], [0.0, 3.0]] |
 | qplex | 32.15 ± 15.57 | 66.56 ± 9.63 | 58.67 ± 35.98 | [80.0, 8.0, 88.0] | [[0.0, 80.0], [0.0, 8.0], [0.0, 88.0]] |
+| qplex_lam07 | 28.61 ± 20.66 | 52.5 ± 36.53 | 59.67 ± 40.07 | [88.0, 88.0, 3.0] | [[0.0, 88.0], [88.0, 0.0], [3.0, 0.0]] |
 | qplex_atd | 46.79 ± 1.57 | 84.61 ± 3.55 | 93.33 ± 3.77 | [88.0, 96.0, 96.0] | [[0.0, 88.0], [96.0, 0.0], [96.0, 0.0]] |
 | mappo | 58.37 ± 8.28 | 85.74 ± 15.68 | 86.67 ± 16.5 | [75.0, 110.0, 75.0] | [[75.0, 0.0], [54.0, 56.0], [75.0, 0.0]] |
 | mappo_atd | 47.49 ± 11.62 | 73.96 ± 0.74 | 75.0 ± 0.0 | [75.0, 75.0, 75.0] | [[45.0, 30.0], [75.0, 0.0], [75.0, 0.0]] |
@@ -15,7 +17,9 @@ Paired comparison, ATD(lambda) minus base, greedy return of the final policy (sa
 | base | ATD - base per seed | mean | train AUC ATD - base |
 |---|---|---|---|
 | qmix | [16.0, 0.0, 3.0] | +6.3 | +10.5 |
+| qmix_lam07 (fixed lambda 0.7) | [75.4, -29.0, 0.0] | +15.5 | +0.1 |
 | qplex | [8.0, 88.0, 8.0] | +34.7 | +14.6 |
+| qplex_lam07 (fixed lambda 0.7) | [0.0, 8.0, 93.0] | +33.7 | +18.2 |
 | mappo | [0.0, -35.0, 0.0] | -11.7 | -10.9 |
 
 ATD(lambda) estimator over training (mean over seeds; acc = accuracy telling the small buffer from the large one, 0.5 = cannot tell them apart; lo / hi = fraction of lambdas clipped at lam_min / lam_max):

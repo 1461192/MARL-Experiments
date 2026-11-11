@@ -226,6 +226,85 @@ python -m vdn_lab train --env fetch --map open --agent macpf --steps 200000 --ep
 python examples/09_fetch_macpf.py                  # MACPF (both mixers) + reused baselines, ~25 min per variant on 4 cores
 ```
 
+### Adaptive TD(λ) (`vdn_lab/agents/atd.py`)
+
+Deng, Wang & Zhang, *Adaptive TD-Lambda for Cooperative Multi-agent Reinforcement Learning*, IJCAI 2026
+([arXiv:2605.11880](https://arxiv.org/abs/2605.11880)). A fixed λ applies the same bias/variance trade-off to every
+sample. ATD(λ) chooses λ **per state-action pair**, according to how likely the pair is under the current policy's
+stationary distribution compared with the replay data, `w(s,a) = d^π(s,a) / d^D(s,a)`. The ratio is estimated
+without likelihoods from **two replay buffers**: a large one of older trajectories and a small one of the newest.
+A discriminator is trained to tell the two apart (logistic loss, equal batches). At its optimum the logit is
+`log w`. The ratio is then scaled into λ:
+
+```
+w~(s,a)    = w^(1/T) / mean_batch(w^(1/T))            (self-normalised over the sampled batch, T = 2)
+λ(s,a)     = clip(λ_base · w~(s,a), lam_min = 0.5, lam_max = 0.99)
+```
+
+`λ_base` is the base learner's own λ: 0.9 in the λ-returns of the DQN learners, 0.95 in MAPPO's GAE. Pairs that
+the current policy visits more often than the stored data does get longer traces. Pairs that are mostly old
+data get shorter traces, which cuts the off-policy error of long multi-step returns through stale behaviour.
+`λ[t]` (how much of `G_{t+1}` enters `G_t`) is the λ of the pair at step t+1. While the estimator cannot tell the
+buffers apart, `w = 1` and the agent is exactly its base algorithm.
+
+| agent | large buffer | small buffer | estimator steps |
+|---|---|---|---|
+| `qmix_atd`, `qplex_atd`, `vdn_atd` | the whole replay (100k steps) | its newest tenth (`atd_small`, 10k steps) | 1 per gradient step, 128 + 128 transitions |
+| `mappo_atd` | the last 10 rollouts (`atd_large`, 10k steps) | the current rollout (1000 steps) | 25 per PPO update, 256 + 256 |
+
+The estimator is an MLP (64-64, ReLU, Adam 5e-4) over the mixers' state (all observations) and the one-hot joint
+action. Its λ's are used after `atd_warmup` steps (200 DQN / 50 MAPPO). All of these are `ATDConfig` agent kwargs.
+
+**From the paper vs. my choices.** The paper's PDF / HTML could not be fetched from the environment this was
+written in (arxiv.org and ijcai.org were blocked). Only what its abstract and summaries state is taken from it:
+λ per state-action pair, a parametric likelihood-free density-ratio estimator trained adversarially on a large and a
+small buffer, the ratio scaled into λ, QMIX and MAPPO as hosts, and buffer-size ratios of 10× and more. The
+discriminator and the self-normalisation with a temperature follow the likelihood-free importance weights of Sinha
+et al. (2022), which this construction comes from. The exact ratio → λ scaling, the estimator network and every
+number above are mine. Check them against the paper before relying on exact numbers. QPLEX is a baseline in the
+paper; `qplex_atd` is the plug-in use the paper says the module allows.
+
+**ATD(λ) vs base learners and VDN on fetch** (`examples/10_fetch_adaptive_lambda.py`, tables, λ traces, plots and
+GIFs in `results/atd_vs_baselines/`). Settings are those of examples 8 and 9: 200k steps, 200-step episodes,
+seeds 0–2. QMIX and QPLEX use VDN's hyper-parameters, and `vdn` / `mappo` are the runs of example 8. The ATD
+defaults were not tuned on this task (one 100k-step probe on `open` checked that the estimator learns).
+`*_lam07` are controls: the base learner with a *fixed* λ = 0.7, close to the mean λ the ATD variants end up
+using. Greedy return of the final policy over 5 sessions, mean ± std over seeds; training AUC in brackets.
+
+| map | `qmix` | `qmix` λ=0.7 | `qmix_atd` | `qplex` | `qplex` λ=0.7 | `qplex_atd` | `mappo` | `mappo_atd` | `vdn` |
+|---|---|---|---|---|---|---|---|---|---|
+| `open` | 104.3 ± 71.7 (77) | 141.7 ± 18.9 (75) | **155.0 ± 0.0** (84) | 152.4 ± 3.7 (81) | 147.0 ± 11.3 (84) | 147.0 ± 11.3 (82) | **198.0 ± 43.2** (141) | 179.0 ± 11.3 (149) | 139.7 ± 19.6 (74) |
+| `single` | 25.0 ± 33.3 (7) | 15.9 ± 12.1 (18) | 31.3 ± 40.1 (18) | 58.7 ± 36.0 (32) | 59.7 ± 40.1 (29) | **93.3 ± 3.8** (47) | **86.7 ± 16.5** (58) | 75.0 ± 0.0 (47) | 81.0 ± 10.7 (16) |
+
+* **QPLEX on `single` gained the most.** `qplex_atd` solved the corridor map in all 3 seeds (88, 96, 96), while
+  `qplex` and the fixed-λ control each failed in one seed (8 and 3). Its training AUC is about 1.5× either's, and it
+  is the best greedy result of any learner on `single`. On `open`, all three QPLEX variants reach about the same
+  greedy return.
+* **QMIX on `open`:** `qmix_atd` reached 155 in every seed. `qmix` failed in seed 2 (3.0), and the fixed-λ
+  control reached 115 in that seed. Part of the gain therefore comes from the lower mean λ, not from adapting it.
+  On `single` all three QMIX variants mostly fail, and ATD does not change that.
+* **MAPPO:** ATD did not help: −19 on `open`, −12 on `single`, each driven by one seed. In both cases `mappo_atd`
+  missed the best seed of `mappo` but had lower variance. Here the small buffer is the on-policy rollout and the
+  large one the last 10. The estimator separates them only weakly (accuracy at most about 0.64, early in training).
+  Later it is near chance (0.5 on `open` from about 70k steps, 0.55–0.6 on `single`), so λ stays at 0.94–0.95 with
+  a spread of 0.02–0.05, and the agent is close to plain MAPPO (`lambda.png`).
+* **What the estimator does in the DQN learners:** the newest tenth of the replay is easy to tell from the rest
+  (accuracy 0.8–0.9 after 100k steps). λ spreads over its whole range, 50–70% of pairs at `lam_min` and 20–35% at
+  `lam_max`, so the mean λ falls from 0.9 to about 0.65–0.7. The clipping is heavy; a larger temperature or
+  `lam_min` would soften it.
+* The per-agent split did not change: every QMIX / QPLEX policy, with or without ATD, is a "lazy agent" solution.
+* With 3 seeds, none of these differences is statistically solid. QPLEX on `single` is the most consistent
+  one (3/3 seeds against 2/3 for both comparisons).
+* Cost: ATD adds about 25% wall time to QMIX (648 s vs 522 s per run) and about 30% to QPLEX (1096 s vs 832 s).
+  MAPPO's extra cost is small (211 s, vs about 200 s reported for example 8).
+
+```bash
+python -m vdn_lab train --env fetch --map single --agent qplex_atd --steps 200000 --episode-len 200 \
+       --eval-episode-len 200 --eval-every 25000 --lr 5e-4 \
+       --agent-kw eps_decay_steps=100000 warmup_steps=1000 target_update_every=100 --final-sessions 3 --eval-visual window
+python examples/10_fetch_adaptive_lambda.py        # ATD + base QMIX / QPLEX (+ fixed-λ controls), MAPPO-ATD; reuses vdn / mappo, ~1.5 h on 4 cores
+```
+
 **Games (sec. 4.2):** 8 actions (forward/back/left/right, rotate ×2, beam, noop); observation is an
 egocentric RGB window, default 3×5×5 (4 ahead, 2 each side).
 

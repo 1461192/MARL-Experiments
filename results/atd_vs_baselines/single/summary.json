@@ -85,6 +85,91 @@
     ]
   },
   {
+    "variant": "qmix_lam07",
+    "seeds": 3,
+    "train_auc": 17.57,
+    "train_auc_std": 11.02,
+    "train_final": 36.39,
+    "train_final_std": 26.17,
+    "greedy_final": 15.87,
+    "greedy_final_std": 12.06,
+    "greedy_per_seed": [
+      12.6,
+      32.0,
+      3.0
+    ],
+    "agent_return_per_seed": [
+      [
+        0.0,
+        35.4
+      ],
+      [
+        32.0,
+        0.0
+      ],
+      [
+        3.0,
+        0.0
+      ]
+    ],
+    "idle_rate_per_seed": [
+      [
+        0.598,
+        0.0
+      ],
+      [
+        0.55,
+        0.965
+      ],
+      [
+        0.562,
+        0.941
+      ]
+    ],
+    "beam_freq_per_seed": [
+      [
+        0.015,
+        0.0
+      ],
+      [
+        0.535,
+        0.0
+      ],
+      [
+        0.0,
+        0.758
+      ]
+    ],
+    "noop_freq_per_seed": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.96
+      ],
+      [
+        0.368,
+        0.0
+      ]
+    ],
+    "cells_visited_per_seed": [
+      [
+        10,
+        12
+      ],
+      [
+        11,
+        5
+      ],
+      [
+        10,
+        9
+      ]
+    ]
+  },
+  {
     "variant": "qmix_atd",
     "seeds": 3,
     "train_auc": 17.62,
@@ -251,6 +336,91 @@
       [
         3,
         10
+      ]
+    ]
+  },
+  {
+    "variant": "qplex_lam07",
+    "seeds": 3,
+    "train_auc": 28.61,
+    "train_auc_std": 20.66,
+    "train_final": 52.5,
+    "train_final_std": 36.53,
+    "greedy_final": 59.67,
+    "greedy_final_std": 40.07,
+    "greedy_per_seed": [
+      88.0,
+      88.0,
+      3.0
+    ],
+    "agent_return_per_seed": [
+      [
+        0.0,
+        88.0
+      ],
+      [
+        88.0,
+        0.0
+      ],
+      [
+        3.0,
+        0.0
+      ]
+    ],
+    "idle_rate_per_seed": [
+      [
+        0.985,
+        0.0
+      ],
+      [
+        0.0,
+        0.995
+      ],
+      [
+        0.935,
+        0.97
+      ]
+    ],
+    "beam_freq_per_seed": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.025
+      ],
+      [
+        0.0,
+        0.005
+      ]
+    ],
+    "noop_freq_per_seed": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.97
+      ],
+      [
+        0.0,
+        0.965
+      ]
+    ],
+    "cells_visited_per_seed": [
+      [
+        2,
+        10
+      ],
+      [
+        10,
+        1
+      ],
+      [
+        12,
+        1
       ]
     ]
   },
