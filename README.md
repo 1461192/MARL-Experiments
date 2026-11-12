@@ -20,7 +20,7 @@ vdn_lab/
                 mappo.py (MAPPO / IPPO)  macpf.py (MACPF)  atd.py (adaptive TD(λ) variants)
   experiment/   config.py  runner.py  benchmark.py  render.py
   cli.py        python -m vdn_lab ...
-examples/       ten runnable examples      tests/   pytest suite
+examples/       ten runnable examples       tests/   pytest suite
 ```
 
 ## Install / run
@@ -170,60 +170,82 @@ python examples/08_fetch_mappo_vs_vdn.py           # VDN vs MAPPO vs IPPO, open 
 ### MACPF (`vdn_lab/agents/macpf.py`)
 
 Wang, Ye & Lu, *More Centralized Training, Still Decentralized Execution: Multi-Agent Conditional Policy
-Factorization*, ICLR 2023 ([arXiv:2209.12681](https://arxiv.org/abs/2209.12681)), section 3, with details from
-the authors' code ([PKU-RL/FOP-DMAC-MACPF](https://github.com/PKU-RL/FOP-DMAC-MACPF), `dfop_*` modules).
+Factorization*, ICLR 2023 ([arXiv:2209.12681](https://arxiv.org/abs/2209.12681)). Details the paper leaves
+open come from the authors' code ([PKU-RL/FOP-DMAC-MACPF](https://github.com/PKU-RL/FOP-DMAC-MACPF), `dfop_*`).
 
-* **Conditional factorisation (sec. 3.1).** Maximum-entropy (FOP-style) actor-critic in which the joint policy
-  is `π_jt(a|τ) = Π_i π_i^dep(a_i | τ_i, a_<i)`: agent `i` sees the actions already chosen by agents `0..i-1`
-  during centralised training, so the policy class contains the optimal joint policy.
-* **Decentralised execution (sec. 3.2).** `π_i^dep = π_i^ind + b_i^dep` (logits; stop-gradient on the independent
-  part) and `Q_i^dep = Q_i^ind + c_i^dep`. Two joint critics (`Q_jt^dep`, `Q_jt^ind`, each with its own mixer) and
-  four losses: soft TD(λ) for each critic, and `E_π[α log π_i − Q_i]` for each policy. The dependent joint policy
-  collects the data, so the independent policies are learned off-policy. At execution only `π_i^ind` is used.
-* **Networks.** Shared policy and critic: `Linear(64) → ReLU → GRU(64) → Linear` on `[obs, last action, id]`.
-  Dependency correction: `ELU(Linear(64))` embeddings of preceding agents' `[id, action]`, summed / n, concatenated
-  with the GRU state.
-* **Mixer.** `mixer="fop"` (default) is FOP's decomposition `Q_jt = V_jt + Σ λ_i w_i (Q_i − V_i)`, with
-  `V_i = α logsumexp(Q_i/α)`, Qatten weights `w_i` and QPLEX-style `λ_i(s,a)` (4 heads each). `mixer="qmix"` is
-  the monotonic hypernetwork mixer that the released MACPF code uses. With it the first agent's utility is not
-  identified, because the last agent's dependent Q can absorb the whole joint value. On fetch it did worse (below).
-* **Hyper-parameters (appendix C / `dfop.yaml`).** RMSprop lr 5e-4 (actor and critic), α 0.99, eps 1e-5;
-  grad clip 10; γ 0.99; TD(λ) 0.8; batches of 32 whole episodes; buffer of 5000 episodes; one training step per
-  episode; targets copied every 200 episodes; entropy temperature 0.001; embeddings 64. Exploration: ε-mixture
-  with uniform, 1.0 → 0.05 over 50k steps.
+* **Conditional factorised soft policy iteration (sec. 3.1, eqs. 3–6).** Maximum-entropy actor-critic where
+  agent `i`'s policy also takes the actions of agents `0..i-1`:
+  `π_i(a_i|s,a_<i) = exp((Q_i(s,a_<i,a_i) − V_i(s,a_<i))/α_i)`, `π_jt = Π_i π_i(a_i|s,a_<i)`. This removes FOP's
+  IGO restriction, and the iteration converges to the optimal joint policy (Theorem 1).
+* **Independent counterpart (sec. 3.2).** For every dependent joint policy there is an independent one with the
+  same value (Theorem 2), so independent policies can be used for decentralised execution.
+* **Framework (sec. 3.3, eqs. 10–19).** Four modules per agent:
+  * `π_i^ind` and the correction `b_i^dep`, where the logits of `π_i^dep` are `π_i^ind` + `b_i^dep`;
+  * `Q_i^ind` and the correction `c_i^dep`, where `Q_i^dep = Q_i^ind + c_i^dep`.
 
-The arXiv / OpenReview PDF could not be fetched from the environment these were written in. The paper-level
-description above is from the abstract and summaries, and the details are from the authors' code. Check them
-against appendix C if exact numbers matter.
+  **One** Mixer gives both `Q_jt^dep` and `Q_jt^ind`. The dependent joint policy collects the data, and the same
+  replay batch trains both critics (soft TD, eqs. 16–17) and both policies (eqs. 18–19). The dependent losses
+  only train the corrections: their heads get stop-gradient copies of the independent output and of the GRU
+  state (fig. 3's "Detach"; `detach_dep_trunk=False` lets the GRU learn from them too, as the code does).
+  Execution uses `π_i^ind` only.
+* **Mixer (appendix E).** A hypernetwork **without** non-linearity: `Q_jt = Σ_i w_i(s) Q_i + b(s)` with `w_i ≥ 0`
+  (`mixer="linear"`). `mixer="att"` is the paper's `MACPF_ATT` ablation (FOP/QPLEX attention weights that also
+  depend on the joint action).
+* **Networks (C.2).** Policy and critic: `Linear(64) → ReLU → GRU(64) → Linear` on `[obs, last action, id]`,
+  shared by the agents. Corrections: `Linear(64) → ELU → Linear` on the preceding agents' `[id, action]`
+  embeddings (summed / n) and the GRU state.
+* **Hyper-parameters (C.2, SMAC easy/hard maps; the code where C.2 is silent).**
+  * Optimiser: lr 5e-4, RMSprop (α 0.99, eps 1e-5), grad clip 10, γ 0.99.
+  * Data: batches of 32 episodes, buffer of 5000 episodes, one update per episode, targets updated every
+    200 episodes.
+  * Temperature: **α annealed 0.5 → 0.05 over 200k steps**. Super-hard maps use a fixed 0.001 (variant
+    `macpf_a0.001` below).
+  * From the code: TD(λ = 0.8) targets, and an ε-uniform mixture on the policies, 1 → 0.05 over 50k steps.
 
-`act(explore=False)` uses the independent policies; `eval_policy="dep"` evaluates the dependent ones instead
-(centralised execution, for diagnosis).
+`act(explore=False)` uses the independent policies; `eval_policy="dep"` uses the dependent ones (centralised).
+
+**Matrix game of the paper (sec. 5.1, fig. 4a; `examples/10_macpf_matrix_game.py`).** 4×4 game with two
+optimal joint actions (A,A) and (D,D) worth 8. Settings from C.1: lr 3e-4, α 1 → 0.5, batch 64, 10k steps.
+Greedy return, 8 seeds:
+
+| policy | optimal (8) | other outcomes |
+|---|---|---|
+| dependent `π_jt^dep` | **8 / 8** | – |
+| independent `π_jt^ind` | 3 / 8 | −20 or −12: the agents pick different optima |
+
+The dependent joint policy always finds an optimum, which is the paper's main claim. The independent policies do
+**not** reliably reproduce it, unlike in the paper's fig. 4b. Agent 0's dependent policy splits evenly between A
+and D (as in the paper's fig. 4c), so both agents' independent critics value A and D about the same, and each
+agent's greedy choice is a coin flip. Letting the dependent losses also train the GRU (`detach_dep_trunk=False`)
+gives 4/8.
 
 **MACPF vs MAPPO / IPPO / VDN on fetch** (`examples/09_fetch_macpf.py`, tables, plots and GIFs in
 `results/macpf_vs_baselines/`). Settings are those of example 8: 200k steps, 200-step episodes, seeds 0–2. The
 baseline runs are reused from `results/mappo_vs_vdn/`. Greedy return of the final policy over 5 sessions,
-mean ± std over seeds. "dep" is the same MACPF agent acting with its dependent policies.
+mean ± std over seeds.
 
-| map | `macpf` | `macpf` dep | `macpf_qmix` | `mappo` | `ippo` | `vdn` |
+| map | `macpf` | `macpf_a0.001` | `macpf_nodetach` | `mappo` | `ippo` | `vdn` |
 |---|---|---|---|---|---|---|
-| `open` | 96.9 ± 21.5 | 91.6 ± 27.8 | 34.9 ± 40.7 | 198.0 ± 43.2 | **216.3 ± 30.2** | 139.7 ± 19.6 |
-| `single` | 1.0 ± 1.4 | 2.0 ± 1.4 | 0.0 ± 0.0 | 86.7 ± 16.5 | **104.1 ± 7.7** | 81.0 ± 10.7 |
+| `open` | 5.5 ± 3.5 | 4.1 ± 1.5 | 3.0 ± 0.0 | 198.0 ± 43.2 | **216.3 ± 30.2** | 139.7 ± 19.6 |
+| `single` | 0.0 | 0.0 | 0.0 | 86.7 ± 16.5 | **104.1 ± 7.7** | 81.0 ± 10.7 |
 
-* With the paper's hyper-parameters and this budget, MACPF is the weakest learner on both maps. On `open` its
-  training return is still rising at 200k steps. On `single` (one corridor) it never gets past picking up an item.
-* The budget is a likely cause. One gradient step per 200-step episode gives MACPF only about 970 updates in
-  200k steps, while the paper's SMAC runs take millions of steps. Exploration is the other: an ε-mixture with
-  entropy temperature 0.001 has little to drive it through `single`'s corridor. I did not tune it for this task.
-* The decentralised (independent) policies match the dependent ones (96.9 vs 91.6 on `open`). Distillation itself
-  costs nothing here; the gap to the baselines comes from the learning speed of the dependent policy.
-* The FOP mixer did better than the released code's QMIX mixer (96.9 vs 34.9 on `open`, 3 seeds).
-* On the climbing matrix game, both mixers settle on the safe joint action. The dependent critic learns the
-  conditional best response (agent 1 plays `a` after `a`), but agent 0's utility does not.
+* With the paper's settings, MACPF barely learns fetch in 200k steps. The greedy policies pick up items (+3)
+  but rarely deliver them. The dependent policies do no better (5.7, 3.5, 3.5 on `open`), so the problem is
+  learning speed, not the independent policies.
+* The paper's SMAC runs use 2M steps. With one update per 200-step episode, MACPF gets about 970 updates here.
+  Nothing was tuned for fetch.
+* Earlier versions of this implementation did better on `open` but were less faithful to the paper. Both used
+  **separate** mixers for `Q_jt^dep` and `Q_jt^ind`, and the dependent losses also trained the GRU:
+  * α = 0.001 and the linear mixer: 34.9 ± 40.7;
+  * α = 0.001 and the attention mixer: 96.9 ± 21.5.
+
+  Sharing the mixer, as sec. 3.3 prescribes, seems to be what hurts on this task (runs in the git history).
 
 ```bash
 python -m vdn_lab train --env fetch --map open --agent macpf --steps 200000 --episode-len 200 \
        --eval-episode-len 200 --eval-every 25000 --final-sessions 3 --eval-visual window
-python examples/09_fetch_macpf.py                  # MACPF (both mixers) + reused baselines, ~25 min per variant on 4 cores
+python examples/09_fetch_macpf.py                  # MACPF variants + reused baselines, ~25 min per variant on 4 cores
+python examples/10_macpf_matrix_game.py            # the paper's matrix game, 8 seeds, ~2 min
 ```
 
 ### Adaptive TD(λ) (`vdn_lab/agents/atd.py`)
@@ -410,6 +432,8 @@ Games work the same way via `@register_env` and subclassing `GridWorld`. See `ex
 | `06_compare_learners.py` | VDN vs independent vs centralised on fetch, switch and checkers, 3 seeds, plots + behaviour stats → `results/learner_comparison/` |
 | `07_matrix_qmix_qplex.py` | matrix games that separate VDN / QMIX / QPLEX, 8 seeds, plus a representation-only fit |
 | `08_fetch_mappo_vs_vdn.py` | MAPPO vs VDN (and IPPO) on fetch `open` and `single`, 3 seeds → `results/mappo_vs_vdn/` |
+| `09_fetch_macpf.py` | MACPF (paper settings + two variants) vs MAPPO / IPPO / VDN on fetch `open` and `single` → `results/macpf_vs_baselines/` |
+| `10_macpf_matrix_game.py` | MACPF on its paper's 4×4 matrix game: dependent vs independent policies |
 | `09_fetch_macpf.py` | MACPF (FOP and QMIX mixers) vs MAPPO / IPPO / VDN on fetch `open` and `single` → `results/macpf_vs_baselines/` |
 | `10_fetch_adaptive_lambda.py` | adaptive TD(λ) for QMIX / QPLEX / MAPPO vs the base learners and VDN on fetch `open` and `single` → `results/atd_vs_baselines/` |
 

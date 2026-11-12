@@ -1,63 +1,61 @@
 """Multi-Agent Conditional Policy Factorization (MACPF).
 
 Wang, Ye & Lu, "More Centralized Training, Still Decentralized Execution: Multi-Agent
-Conditional Policy Factorization", ICLR 2023 (arXiv:2209.12681), section 3. Reference code:
-github.com/PKU-RL/FOP-DMAC-MACPF (``dfop_*`` modules); details below follow that code where
-the paper leaves them open.
+Conditional Policy Factorization", ICLR 2023 (arXiv:2209.12681). Section numbers and equations
+below refer to that paper. Where it leaves a detail open, the authors' code is followed
+(github.com/PKU-RL/FOP-DMAC-MACPF, ``dfop_*`` modules).
 
-**Idea (sec. 3.1).** Maximum-entropy MARL in the FOP style (soft actor-critic per agent,
-per-agent soft Q-values mixed into a joint Q). Instead of factorising the joint policy into
-independent per-agent policies, MACPF factorises it *conditionally*,
+**Conditional factorised soft policy iteration (sec. 3.1).** Maximum-entropy MARL in which
+agent ``i``'s policy also takes the actions of the agents before it (eqs. 3-5),
 
-    pi_jt(a | tau) = prod_i pi_i^dep(a_i | tau_i, a_<i),
+    pi_i(a_i | s, a_<i) = exp((Q_i(s, a_<i, a_i) - V_i(s, a_<i)) / alpha_i),
+    pi_jt(a | s) = prod_i pi_i(a_i | s, a_<i),
 
-so agent ``i`` sees the actions of agents ``0..i-1`` (a fixed order) during centralised
-training. This joint policy class contains the optimum, and the conditional factorised
-soft policy iteration converges to it.
+so the joint policy is no longer restricted by FOP's IGO condition, and alternating joint soft
+policy evaluation with individual conditional soft policy improvement converges to the optimal
+joint policy (Theorem 1).
 
-**Decentralised execution (sec. 3.2).** The paper shows that from the optimal dependent joint
-policy one can always derive an independent joint policy with the same return, so each
-agent's dependent policy is split into
+**Independent joint policy (sec. 3.2).** For any dependent joint policy there is an independent
+one with the same value (Theorem 2), so the independent one can be used for decentralised
+execution.
 
-    pi_i^dep(a_i | tau_i, a_<i)  =  pi_i^ind(a_i | tau_i)  +  b_i^dep(a_i | tau_i, a_<i)
+**Framework (sec. 3.3, fig. 3).** Each agent has four modules: an independent policy
+``pi_i^ind(a_i | tau_i)``, a dependency policy correction ``b_i^dep(a_i | tau_i, a_<i)``, an
+independent critic ``Q_i^ind(tau_i, a_i)`` and a dependency critic correction
+``c_i^dep(tau_i, a_<i, a_i)``:
 
-(in logit space, with a stop-gradient on the independent part), and likewise the critic,
+    logits of pi_i^dep = logits of pi_i^ind + b_i^dep                (eq. 10, footnote 1)
+    Q_i^dep = Q_i^ind + c_i^dep                                     (eq. 13)
+    Q_jt^dep = Mixer([Q_i^dep], s),   Q_jt^ind = Mixer([Q_i^ind], s)  (eqs. 14-15, *one* Mixer)
 
-    Q_i^dep(tau_i, a_<i, a_i)  =  Q_i^ind(tau_i, a_i)  +  c_i^dep(tau_i, a_<i, a_i).
+The dependent joint policy is the behaviour policy. The same replay batch trains both critics
+by soft TD (eqs. 16-17, ``a'`` sampled from the current dependent / independent policy) and
+both policies by the KL / soft-actor-critic objective (eqs. 18-19; for ``J^dep`` the preceding
+agents' actions are sampled from their current dependent policies). "The gradient of L^dep only
+updates [c_i^dep]" and "the gradient of J^dep only updates b_i^dep": the dependent heads see a
+stop-gradient copy of the independent output *and* of the GRU state (the "Detach" arrows in
+fig. 3), so ``L^ind`` / ``J^ind`` alone train the shared trunk. The Mixer is trained by both
+critic losses. At execution time only ``pi_i^ind`` is used.
 
-Two joint critics are learned, ``Q_jt^dep = Mixer^dep(Q^dep)`` and ``Q_jt^ind = Mixer^ind(Q^ind)``.
-Data is collected by the dependent joint policy (it is the behaviour policy), so the
-independent policy and critic are learned off-policy from the same replay. Each of the four
-modules has its own soft policy-evaluation / improvement loss:
+**Mixer (appendix E).** A hypernetwork *without* non-linearity, i.e. a weighted sum of the
+``Q_i`` with non-negative weights that depend only on the state (``mixer="linear"``, default;
+two-layer hypernetworks, embed 64, as in the code). The paper's ``MACPF_ATT`` ablation, a
+FOP/QPLEX-style attention mixer whose weights also depend on the joint action, is available as
+``mixer="att"``. The testbed has no global state, so the mixer's state is all agents'
+observations concatenated.
 
-* critic:  ``Q_jt(tau_t, a_t) -> TD(lambda) target of r + gamma (Q_jt'(tau', a') - alpha log pi(a'|tau'))``
-  with ``a' ~ pi`` (the dependent or the independent policy respectively);
-* actor:   ``E_{a_i ~ pi_i}[alpha log pi_i(a_i) - Q_i(a_i)]`` per agent, i.e. KL to the
-  Boltzmann distribution of the agent's own (dependent or independent) soft Q.
+**Networks (appendix C.2).** Policy and critic, shared by all agents: ``Linear(64) -> ReLU ->
+GRU(64) -> Linear`` on ``[obs, last action, agent id]``. Correction networks: ``Linear(64) ->
+ELU -> Linear``. The code embeds each preceding agent's one-hot ``[id, action]`` with the first
+layer, sums them / ``n_agents`` and concatenates the GRU state before the second layer.
 
-At execution time only ``pi_i^ind`` is used, so every agent acts on its own history.
-
-**Networks (reference code).** Policy and critic are each shared by all agents:
-``Linear(64) -> ReLU -> GRU(64) -> Linear(n_actions)`` on ``[obs, last action, agent id]``.
-The dependency correction embeds every preceding agent's ``[id, action]`` one-hot with
-``ELU(Linear(64))``, sums them divided by ``n_agents``, concatenates the GRU state and maps
-that to ``n_actions`` (the first agent gets a zero embedding).
-
-**Mixers.** ``mixer="fop"`` (default) is FOP's decomposition, which sec. 3 builds on:
-``Q_jt = V_jt + sum_i lambda_i w_i (Q_i - V_i)`` with soft values ``V_i = alpha logsumexp(Q_i/alpha)``
-(see ``FOPMixer``). ``mixer="qmix"`` is what the released MACPF code uses instead: a QMIX-style
-monotonic hypernetwork mixer (two-layer hypernetworks, embed 64; ``HyperMixer``). With it the
-first agent's utility is not identified (the last agent's dependent Q can absorb the whole
-joint value), and on the climbing matrix game the first agent then never learns its part.
-The testbed has no global state, so the mixers' state is all agents' observations concatenated.
-
-**Hyper-parameters (appendix C / the reference config ``dfop.yaml``).** RMSprop
-(lr 5e-4 actor and critic, alpha 0.99, eps 1e-5), grad-norm clip 10, gamma 0.99, TD(lambda)
-0.8, batches of 32 whole episodes, buffer of 5000 episodes, one training step per collected
-episode, target critic / mixers copied every 200 episodes, entropy temperature alpha = 0.001,
-GRU 64, mixer / hypernet / dependency embeddings 64. Exploration: the policy is mixed with a
-uniform distribution with weight epsilon, annealed linearly 1.0 -> 0.05 over 50k steps (the
-same mixed policy is used in the losses, as in the reference code).
+**Hyper-parameters (appendix C.2, SMAC, plus the code's ``dfop.yaml`` where C.2 is silent).**
+lr 5e-4; RMSprop (alpha 0.99, eps 1e-5); grad-norm clip 10; gamma 0.99; batches of 32
+episodes; buffer of 5000 episodes; one training step per episode; target networks updated every
+200 training episodes; temperature ``alpha`` annealed 0.5 -> 0.05 over 200k steps (C.2: easy
+and hard maps; super-hard maps use a fixed 0.001, MPE anneals over 50k steps). The code uses
+TD(lambda = 0.8) targets for eqs. 16-17 and mixes the policies with a uniform distribution with
+weight epsilon, 1.0 -> 0.05 over 50k steps (used in the losses too).
 
 Episodes in the grid worlds end on a time limit only, so the last state bootstraps from the
 target critic (as pymarl does for ``episode_limit``).
@@ -90,7 +88,9 @@ class MACPFConfig:
     buffer_size: int = 5000             # episodes
     train_every: int = 1                # training steps after every `train_every` episodes
     target_update_interval: int = 200   # episodes
-    alpha: float = 0.001                # entropy temperature
+    alpha_start: float = 0.5            # entropy temperature, annealed linearly (appendix C.2: easy / hard maps)
+    alpha_end: float = 0.05
+    alpha_anneal_steps: int = 200_000
     hidden: int = 64                    # GRU size
     mixing_embed_dim: int = 64
     hypernet_embed: int = 64
@@ -100,10 +100,11 @@ class MACPFConfig:
     eps_anneal_steps: int = 50_000
     obs_last_action: bool = True
     obs_agent_id: bool = True
-    mixer: str = "fop"                  # "fop": FOP's attention mixer (sec. 3) | "qmix": the reference code's monotonic mixer
-    n_head: int = 4                     # attention heads of the FOP mixer (both attention modules)
-    attend_reg_coef: float = 0.001      # penalty on the FOP mixer's attention logits
-    shared_mixer: bool = False          # True: one mixer for Q^ind and Q^dep (as the reference code ends up doing)
+    mixer: str = "linear"               # "linear": hypernetwork without non-linearity (appendix E) | "att": MACPF_ATT ablation
+    n_head: int = 4                     # attention heads of the "att" mixer (both attention modules)
+    attend_reg_coef: float = 0.001      # penalty on the "att" mixer's attention logits
+    shared_mixer: bool = True           # one Mixer for Q_jt^dep and Q_jt^ind (sec. 3.3)
+    detach_dep_trunk: bool = True       # L^dep / J^dep only update the correction networks (sec. 3.3)
     eval_policy: str = "ind"            # act(explore=False) with "ind" (decentralised) or "dep" (needs a_<i)
     max_train_len: Optional[int] = None  # train on random windows of this many steps (None: whole episodes)
 
@@ -137,12 +138,17 @@ class DependentNet(nn.Module):
         e = F.elu(self.dep_fc1(prev))                                   # (..., d, E)
         return torch.matmul(mask, e) / self.n_agents
 
-    def dep_head(self, h: torch.Tensor, ind: torch.Tensor, dep_h: torch.Tensor) -> torch.Tensor:
-        return ind.detach() + self.dep_fc2(torch.cat([h, dep_h], -1))
+    def dep_head(self, h: torch.Tensor, ind: torch.Tensor, dep_h: torch.Tensor, detach: bool = True) -> torch.Tensor:
+        """stopgrad(ind) + correction([h, dep_h]); with ``detach`` the GRU state is a stop-gradient
+        input too, so only the correction network learns from the dependent losses."""
+        return ind.detach() + self.dep_fc2(torch.cat([h.detach() if detach else h, dep_h], -1))
 
 
 class HyperMixer(nn.Module):
-    """Monotonic QMIX-style mixer with two-layer hypernetworks (reference ``DFOPMixer``).
+    """MACPF's mixer (appendix E; reference ``DFOPMixer``): two-layer hypernetworks of the state
+    with absolute values, and *no* non-linearity between the mixing layers, so
+    ``Q_jt = sum_i w_i(s) Q_i + b(s)`` with ``w_i(s) >= 0``: a weighted sum whose weights depend on
+    the state only (eq. 6 with ``alpha / alpha_i = w_i``).
     q ``(B, T, d)``, state ``(B, T, S)`` -> ``(B, T)``."""
 
     def __init__(self, n_agents: int, state_dim: int, embed: int, hyper_embed: int):
@@ -162,7 +168,9 @@ class HyperMixer(nn.Module):
 
 
 class FOPMixer(nn.Module):
-    """FOP's mixer (Zhang et al. 2021; reference ``FOPMixer``), the decomposition MACPF sec. 3 builds on:
+    """FOP's attention mixer (Zhang et al. 2021; reference ``FOPMixer``). MACPF does *not* use it:
+    it is the ``MACPF_ATT`` ablation of appendix E (``mixer="att"``), where the joint-action
+    dependent weights conflict with the explicit dependency in ``Q_i^dep``.
 
         Q_jt = sum_i [w_i(s) Q_i + V(s)/d]  +  sum_i (lambda_i(s, a) - 1) * stopgrad(w_i(s) (Q_i - V_i)),
 
@@ -247,11 +255,11 @@ class MACPFAgent(Agent):
         self.actor = DependentNet(in_dim, d, nA, c.hidden, c.dep_embed_dim).to(device)
         self.critic = DependentNet(in_dim, d, nA, c.hidden, c.dep_embed_dim).to(device)
         state_dim = d * self.obs_dim
-        if c.mixer not in ("fop", "qmix"):
-            raise ValueError("mixer must be 'fop' or 'qmix'")
+        if c.mixer not in ("linear", "att"):
+            raise ValueError("mixer must be 'linear' or 'att'")
 
         def make_mixer() -> nn.Module:
-            if c.mixer == "fop":
+            if c.mixer == "att":
                 return FOPMixer(d, nA, self.obs_dim, c.mixing_embed_dim, c.hypernet_embed, c.n_head,
                                 c.attend_reg_coef).to(device)
             return HyperMixer(d, state_dim, c.mixing_embed_dim, c.hypernet_embed).to(device)
@@ -286,6 +294,12 @@ class MACPFAgent(Agent):
         self._stats: Dict[str, float] = {}
 
     # ---------------------------------------------------------------------- helpers
+    @property
+    def alpha(self) -> float:
+        c = self.cfg
+        frac = min(1.0, self.env_steps / max(1, c.alpha_anneal_steps))
+        return c.alpha_start + frac * (c.alpha_end - c.alpha_start)
+
     @property
     def epsilon(self) -> float:
         c = self.cfg
@@ -323,7 +337,7 @@ class MACPFAgent(Agent):
         prev = torch.zeros(*h.shape[:-2], d, d + self.n_actions, device=h.device)
         for i in range(d):
             dep_h = self.actor.dep_embedding(prev, self._prec)[..., i, :]
-            logit = self.actor.dep_head(h[..., i, :], ind[..., i, :], dep_h)
+            logit = self.actor.dep_head(h[..., i, :], ind[..., i, :], dep_h, self.cfg.detach_dep_trunk)
             p = self._mix_eps(logit, eps)
             a = p.argmax(-1) if greedy else torch.distributions.Categorical(probs=p).sample()
             probs.append(p)
@@ -339,7 +353,7 @@ class MACPFAgent(Agent):
         if not dep:
             return q
         dep_h = net.dep_embedding(self._onehot_joint(actions), self._prec)
-        return net.dep_head(h, q, dep_h)
+        return net.dep_head(h, q, dep_h, self.cfg.detach_dep_trunk)
 
     # ------------------------------------------------------------ Agent interface
     def reset_episode(self) -> None:
@@ -432,6 +446,7 @@ class MACPFAgent(Agent):
             self._update_targets()
             self._last_target_update = self.episodes
         stats["epsilon"] = self.epsilon
+        stats["alpha"] = self.alpha
         stats["loss"] = stats["critic_loss_ind"] + stats["critic_loss_dep"]
         self._stats = stats
         return stats
@@ -450,7 +465,7 @@ class MACPFAgent(Agent):
         with torch.no_grad():
             q = self._critic_q(self.critic, self._gru(self.critic, x[:, :-1]), acts, dep)
         log_p = torch.log(probs.clamp(min=1e-10))
-        per = (probs * (c.alpha * log_p - q)).sum(-1)                # (B, T, d)
+        per = (probs * (self.alpha * log_p - q)).sum(-1)                # (B, T, d)
         m = mask.unsqueeze(-1).expand_as(per)
         loss = (per * m).sum() / m.sum()
         self.actor_opt.zero_grad(set_to_none=True)
@@ -477,7 +492,7 @@ class MACPFAgent(Agent):
             target_q = torch.where(ar.unsqueeze(0) > lengths.unsqueeze(1), final, target_q)
             targets = td_lambda_targets(rewards, mask, target_q, c.gamma, c.td_lambda)
             logp_next = torch.log(probs.gather(-1, next_a.unsqueeze(-1)).squeeze(-1).clamp(min=1e-10))
-            targets = targets - c.alpha * logp_next[:, 1:].mean(-1)
+            targets = targets - self.alpha * logp_next[:, 1:].mean(-1)
         q = self._critic_q(self.critic, self._gru(self.critic, x[:, :-1]), actions[:, :-1], dep)
         q_jt = self._mix(mixer, q, actions[:, :-1], state[:, :-1])
         td = (q_jt - targets) * mask
@@ -493,7 +508,7 @@ class MACPFAgent(Agent):
         """Joint soft Q of ``actions`` from the per-agent ``q`` ``(B, T, d, nA)``."""
         q_taken = q.gather(-1, actions.unsqueeze(-1)).squeeze(-1)
         if isinstance(mixer, FOPMixer):
-            a = self.cfg.alpha
+            a = self.alpha
             vs = a * torch.logsumexp(q / a, -1)
             return mixer(q_taken, state, F.one_hot(actions, self.n_actions).float(), vs)
         return mixer(q_taken, state)
@@ -525,11 +540,11 @@ class MACPFAgent(Agent):
         n = sum(p.numel() for p in self.actor.parameters())
         out = {"n_params": float(n + sum(p.numel() for p in self.critic_params)), "n_actor_params": float(n),
                "env_steps": float(self.env_steps), "updates": float(self.n_updates), "epsilon": self.epsilon,
-               "buffer_episodes": float(len(self.buffer))}
+               "buffer_episodes": float(len(self.buffer)), "alpha": self.alpha}
         out.update({k: v for k, v in self._stats.items() if k.startswith(("entropy", "q_jt"))})
         return out
 
     def describe(self) -> str:
         c = self.cfg
-        return (f"MACPFAgent(batch={c.batch_size} eps, td_lambda={c.td_lambda}, alpha={c.alpha}, "
+        return (f"MACPFAgent(batch={c.batch_size} eps, td_lambda={c.td_lambda}, alpha={c.alpha_start}->{c.alpha_end}, "
                 f"mixer={c.mixer}, shared_mixer={c.shared_mixer}, eval={c.eval_policy})")

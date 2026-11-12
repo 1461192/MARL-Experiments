@@ -1,7 +1,7 @@
 """Example 9 - MACPF vs MAPPO, IPPO and VDN on Fetch.
 
 Trains MACPF (multi-agent conditional policy factorisation, Wang et al. 2023) with the
-hyper-parameters of the paper's appendix C / reference config on every Fetch map given (default
+hyper-parameters of the paper's appendix C.2 (SMAC easy / hard maps) on every Fetch map given (default
 ``open`` and ``single``), over the same three seeds, budget and episode settings as examples 6
 and 8. The baselines (``vdn``, ``mappo``, ``ippo``) are taken from the saved runs of example 8
 (``results/mappo_vs_vdn/<map>/runs``) when they are there, and trained otherwise.
@@ -35,9 +35,9 @@ cmp = importlib.import_module("06_compare_learners")      # workers, behaviour s
 
 ROOT = Path(__file__).resolve().parents[1] / "results" / "macpf_vs_baselines"
 BASELINE_ROOT = Path(__file__).resolve().parents[1] / "results" / "mappo_vs_vdn"
-ALGOS = ["macpf", "macpf_qmix", "mappo", "ippo", "vdn"]
-MACPF = ("macpf", "macpf_qmix")
-cmp.COLORS.update({"mappo": "#c0392b", "ippo": "#8e44ad", "macpf": "#16a085", "macpf_qmix": "#7fb800"})
+ALGOS = ["macpf", "macpf_a0.001", "macpf_nodetach", "mappo", "ippo", "vdn"]
+MACPF = ("macpf", "macpf_a0.001", "macpf_nodetach")
+cmp.COLORS.update({"mappo": "#c0392b", "ippo": "#8e44ad", "macpf": "#16a085", "macpf_a0.001": "#7fb800", "macpf_nodetach": "#e6a700"})
 SEEDS = cmp.SEEDS
 STEPS = budget(200_000)
 
@@ -46,8 +46,11 @@ def variants(steps: int):
     quick_ppo = dict(rollout_len=500, ppo_epochs=2) if QUICK else {}
     quick_macpf = dict(batch_size=2, max_train_len=50) if QUICK else {}
     return {
-        "macpf": {"agent": "macpf", "agent_kwargs": quick_macpf},   # appendix-C defaults, FOP mixer (sec. 3)
-        "macpf_qmix": {"agent": "macpf", "agent_kwargs": {**quick_macpf, "mixer": "qmix"}},  # released code's mixer
+        "macpf": {"agent": "macpf", "agent_kwargs": quick_macpf},   # paper defaults (sec. 3, appendix C.2 / E)
+        # appendix C.2's other temperature setting (super-hard SMAC maps): fixed alpha = 0.001
+        "macpf_a0.001": {"agent": "macpf", "agent_kwargs": {**quick_macpf, "alpha_start": 0.001, "alpha_end": 0.001}},
+        # as the released code: the dependent losses also train the shared GRU trunk
+        "macpf_nodetach": {"agent": "macpf", "agent_kwargs": {**quick_macpf, "detach_dep_trunk": False}},
         "mappo": {"agent": "mappo", "agent_kwargs": quick_ppo},
         "ippo": {"agent": "ippo", "agent_kwargs": quick_ppo},
         "vdn": {"agent": "vdn", "agent_kwargs": hp(steps)},

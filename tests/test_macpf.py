@@ -25,13 +25,13 @@ def rollout(agent, episodes, ep_len=13, seed=0):
     return metrics
 
 
-@pytest.mark.parametrize("kw", [{}, dict(mixer="qmix"), dict(shared_mixer=True), dict(max_train_len=5),
+@pytest.mark.parametrize("kw", [{}, dict(mixer="att"), dict(shared_mixer=False), dict(detach_dep_trunk=False), dict(max_train_len=5),
                                 dict(obs_last_action=False, obs_agent_id=False), dict(eval_policy="dep")])
 def test_macpf_acts_and_learns(kw):
     agent = make_agent("macpf", **SPEC, seed=0, batch_size=4, **kw)
     m = rollout(agent, 6)
     assert agent.n_updates == 3 and len(agent.buffer) == 6
-    assert (agent.mixer_dep is agent.mixer_ind) == bool(kw.get("shared_mixer"))
+    assert (agent.mixer_dep is agent.mixer_ind) == kw.get("shared_mixer", True)
     for k in ("policy_loss_ind", "policy_loss_dep", "critic_loss_ind", "critic_loss_dep", "loss"):
         assert np.isfinite(m[k]), k
     agent.reset_episode()
@@ -53,16 +53,31 @@ def test_dependency_correction_only_sees_preceding_agents():
     assert torch.allclose(q_ind, agent.critic.ind_head(h))
 
 
-def test_dependent_loss_does_not_train_independent_head():
+@pytest.mark.parametrize("which", ["actor", "critic"])
+def test_dependent_losses_only_train_the_corrections(which):
+    """Sec. 3.3: J^dep only updates b_i^dep and L^dep only updates c_i^dep (plus the Mixer)."""
     agent = make_agent("macpf", **SPEC, seed=0, batch_size=2)
     rollout(agent, 2)
     batch = agent._sample()
     x = agent._inputs(batch["obs"], batch["last"])
-    before = agent.actor.fc2.weight.detach().clone()
-    agent._train_actor(batch, x, dep=True)
-    assert torch.equal(before, agent.actor.fc2.weight)  # stop-gradient on the independent logits
-    agent._train_actor(batch, x, dep=False)
-    assert not torch.equal(before, agent.actor.fc2.weight)
+    net = getattr(agent, which)
+    before = {k: v.detach().clone() for k, v in net.state_dict().items()}
+    (agent._train_actor if which == "actor" else agent._train_critic)(batch, x, dep=True)
+    for k, v in net.state_dict().items():
+        assert torch.equal(before[k], v) != k.startswith("dep_"), k
+    (agent._train_actor if which == "actor" else agent._train_critic)(batch, x, dep=False)
+    for k, v in net.state_dict().items():
+        if not k.startswith("dep_"):
+            assert not torch.equal(before[k], v), k
+
+
+def test_alpha_is_annealed():
+    agent = make_agent("macpf", **SPEC, alpha_start=0.5, alpha_end=0.05, alpha_anneal_steps=100)
+    assert agent.alpha == 0.5
+    agent.env_steps = 50
+    assert abs(agent.alpha - 0.275) < 1e-9
+    agent.env_steps = 1000
+    assert abs(agent.alpha - 0.05) < 1e-9
 
 
 def test_td_lambda_targets_match_one_step_and_mc():
@@ -92,7 +107,20 @@ def test_macpf_save_load_and_runner(tmp_path):
     exp2.evaluate(1)
 
 
-def test_fop_mixer_value_and_advantage_split():
+def test_linear_mixer_is_a_state_weighted_sum():
+    """Appendix E: no non-linearity, so Q_jt is affine in the Q_i with non-negative weights."""
+    from vdn_lab.agents.macpf import HyperMixer
+    torch.manual_seed(0)
+    mix = HyperMixer(2, 150, 16, 16)
+    state = torch.rand(3, 5, 150)
+    q1, q2 = torch.randn(3, 5, 2), torch.randn(3, 5, 2)
+    zero = mix(torch.zeros(3, 5, 2), state)
+    assert torch.allclose(mix(q1 + q2, state) - zero, (mix(q1, state) - zero) + (mix(q2, state) - zero), atol=1e-5)
+    e0 = mix(torch.tensor([1.0, 0.0]).expand(3, 5, 2), state) - zero
+    assert (e0 >= 0).all()
+
+
+def test_att_mixer_value_and_advantage_split():
     """Q_jt = sum_i (w_i Q_i + V/d) + sum_i (lambda_i - 1) w_i (Q_i - V_i): at the greedy joint
     action (Q_i = V_i for alpha -> 0) the lambda term vanishes."""
     from vdn_lab.agents.macpf import FOPMixer
