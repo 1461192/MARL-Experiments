@@ -1,0 +1,33 @@
+{
+  "name": "qmix_s2",
+  "seed": 2,
+  "device": "cpu",
+  "env": "fetch",
+  "env_kwargs": {
+    "layout": "open"
+  },
+  "episode_len": 200,
+  "eval_episode_len": 200,
+  "agent": "qmix",
+  "agent_kwargs": {
+    "lr": 0.0005,
+    "eps_decay_steps": 100000,
+    "warmup_steps": 1000,
+    "target_update_every": 100
+  },
+  "train_steps": 200000,
+  "eval_every": 25000,
+  "eval_episodes": 3,
+  "final_eval_sessions": 5,
+  "train_visual": "none",
+  "train_visual_every": 0,
+  "eval_visual": "none",
+  "visual_delay": 0.08,
+  "visual_every": 1,
+  "visual_color": true,
+  "visual_views": true,
+  "visual_dir": null,
+  "out_dir": "/home/user/MARL-Experiments/results/atd_vs_baselines/open/runs",
+  "save_agent": true,
+  "verbose": 1
+}

@@ -178,20 +178,27 @@ class ValueNorm(nn.Module):
 
 
 def gae(rewards: np.ndarray, values: np.ndarray, next_values: np.ndarray, dones: np.ndarray,
-        gamma: float, lam: float) -> np.ndarray:
+        gamma: float, lam) -> np.ndarray:
     """Generalised advantage estimation over a rollout (PPO paper eq. 11-12).
 
     rewards ``(T,)``, values ``(T, d)``: V(o_t). ``next_values[t]`` is V(o_{t+1}) and is only read
     where the episode ended at t (``dones[t]``) or at the last step of the rollout; elsewhere
-    V(o_{t+1}) = ``values[t+1]``. The advantage does not run on across an episode end."""
+    V(o_{t+1}) = ``values[t+1]``. The advantage does not run on across an episode end.
+
+    ``lam`` is a float or (adaptive TD(lambda)) an array ``(T,)`` / ``(T, d)``: ``A_t = delta_t + gamma *
+    lam[t] * A_{t+1}``, so ``A_t + V_t`` is the lambda-return with ``lambda_t`` (ATD paper eq. 10)."""
     T = len(rewards)
     adv = np.zeros_like(values)
     last = np.zeros(values.shape[1:], dtype=values.dtype)
+    lam_t = np.asarray(lam, dtype=values.dtype)
+    if lam_t.ndim == 1:                                   # one lambda per step, shared by the agents
+        lam_t = lam_t.reshape(T, *(1,) * (values.ndim - 1))
+    lam_t = np.broadcast_to(lam_t, values.shape)
     for t in reversed(range(T)):
         cut = dones[t] or t == T - 1
         nv = next_values[t] if cut else values[t + 1]
         delta = rewards[t] + gamma * nv - values[t]
-        last = delta + (0.0 if cut else gamma * lam) * last
+        last = delta + (0.0 if cut else gamma * lam_t[t]) * last
         adv[t] = last
     return adv
 
@@ -342,7 +349,12 @@ class MAPPOAgent(Agent):
         old_v = self._denorm(torch.from_numpy(b["values"]).to(dev))
         adv = gae(b["rewards"], old_v.cpu().numpy(), b["next_values"], b["dones"], c.gamma, c.gae_lambda)
         adv_t = torch.from_numpy(adv).to(dev)
-        returns = adv_t + old_v
+        crit_lam = self._critic_lambda()
+        if crit_lam is None:
+            returns = adv_t + old_v
+        else:                           # critic regresses onto lambda-returns with their own lambda
+            returns = torch.from_numpy(gae(b["rewards"], old_v.cpu().numpy(), b["next_values"], b["dones"],
+                                           c.gamma, crit_lam)).to(dev) + old_v
         if c.value_norm:
             vn.update(returns)
             targets, old_v_n = vn.normalize(returns), vn.normalize(old_v)
@@ -404,6 +416,12 @@ class MAPPOAgent(Agent):
         out["loss"] = out["policy_loss"] + c.value_loss_coef * out["value_loss"]
         out["return_mean"] = float(returns.mean().item())
         return out
+
+    def _critic_lambda(self):
+        """lambda of the critic's return targets: None = the GAE returns (``gae_lambda``), or (adaptive
+        TD(lambda), ``atd.py``) an array ``(T,)`` as described in ``gae``. The actor's advantages always
+        use ``gae_lambda``."""
+        return None
 
     def _value_loss(self, v: torch.Tensor, old_v: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         c = self.cfg

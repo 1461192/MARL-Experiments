@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import copy
 from dataclasses import asdict, dataclass
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, Union
 
 import numpy as np
 import torch
@@ -24,18 +24,23 @@ from .base import Agent
 from .replay import SequenceReplay
 
 
-def lambda_returns(rewards: torch.Tensor, boot: torch.Tensor, gamma: float, lam: float) -> torch.Tensor:
+def lambda_returns(rewards: torch.Tensor, boot: torch.Tensor, gamma: float,
+                   lam: Union[float, torch.Tensor]) -> torch.Tensor:
     """Forward-view lambda-returns over a trajectory (no off-policy correction).
 
     rewards: ``(B, L, 1)``  r_t
     boot:    ``(B, L, K)``  max_a' Q_target(o_{t+1}, a')  (bootstrap value *after* step t)
-    G_t = r_t + gamma * ((1 - lam) * boot_t + lam * G_{t+1}),   G_L := boot_{L-1}
+    lam:     a float, or a tensor ``(B, L, 1)`` of per-step values (adaptive TD(lambda): ``lam[:, t]`` is
+             ``omega(s_t, a_t)``, ATD paper eq. 10). ``lam[:, L-1]`` is never read.
+    G_t = r_t + gamma * ((1 - lam_t) * boot_t + lam_t * G_{t+1}),   G_L := boot_{L-1}
     lam=0 -> 1-step TD target; lam=1 -> discounted n-step return bootstrapped at the end.
     """
     G = torch.empty_like(boot)
     nxt = boot[:, -1]
+    per_step = torch.is_tensor(lam)
     for t in reversed(range(boot.shape[1])):
-        nxt = rewards[:, t] + gamma * ((1 - lam) * boot[:, t] + lam * nxt)
+        l = lam[:, t] if per_step else lam
+        nxt = rewards[:, t] + gamma * ((1 - l) * boot[:, t] + l * nxt)
         G[:, t] = nxt
     return G
 
@@ -154,7 +159,8 @@ class RecurrentDQNAgent(Agent):
         rew = torch.from_numpy(batch["rewards"]).to(self.device)[:, bs:].unsqueeze(-1)  # (B, L, 1)
         chosen, boot = self._td_values(obs, actions)                         # (B, L, K) each
         with torch.no_grad():
-            G = lambda_returns(rew, boot, c.gamma, c.lam)
+            lam = self._trace_lambda(obs, actions, batch["idx"])
+            G = lambda_returns(rew, boot, c.gamma, lam)
         loss_fn = F.smooth_l1_loss if c.loss == "huber" else F.mse_loss
         loss = loss_fn(chosen, G)
 
@@ -165,7 +171,16 @@ class RecurrentDQNAgent(Agent):
         self.n_updates += 1
         if self.n_updates % c.target_update_every == 0:
             self.target.load_state_dict(self.net.state_dict())
+            self._on_target_update()
         return {"loss": float(loss.item()), "q_mean": float(chosen.mean().item()), "epsilon": self.epsilon}
+
+    def _trace_lambda(self, obs: torch.Tensor, actions: torch.Tensor, idx: np.ndarray) -> Union[float, torch.Tensor]:
+        """lambda for the returns of a sampled batch (``idx``: replay positions of the window): the fixed
+        ``cfg.lam``, or (adaptive TD(lambda), ``atd.py``) a ``(B, L, 1)`` tensor as in ``lambda_returns``."""
+        return self.cfg.lam
+
+    def _on_target_update(self) -> None:
+        """Called right after every hard target-network update."""
 
     def _td_values(self, obs: torch.Tensor, actions: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """obs ``(B, W, d, F)``, actions ``(B, W-1, d)`` -> (Q of the taken actions on the L

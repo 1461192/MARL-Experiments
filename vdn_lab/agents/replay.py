@@ -39,14 +39,22 @@ class SequenceReplay:
         self._push(final_obs, 0, 0.0)
         self.ep_id += 1
 
-    def sample(self, batch: int, window: int) -> Dict[str, np.ndarray]:
-        """obs ``(B, W, n, *obs)``, actions ``(B, W-1, n)``, rewards ``(B, W-1)``."""
-        hi = self.size - window + 1 if self.size < self.cap else self.cap
+    def sample(self, batch: int, window: int, recent: Optional[int] = None) -> Dict[str, np.ndarray]:
+        """obs ``(B, W, n, *obs)``, actions ``(B, W-1, n)``, rewards ``(B, W-1)``, idx ``(B, W)`` (buffer
+        positions). ``recent=N`` samples only windows inside the N newest entries (the small,
+        on-policy buffer of adaptive TD(lambda) is the newest part of this one)."""
+        if recent is None:
+            hi = self.size - window + 1 if self.size < self.cap else self.cap
+        else:
+            hi = min(recent, self.size) - window + 1
         if hi <= 0:
             raise RuntimeError("not enough data to sample")
         chosen = []
         for _ in range(100):
-            s = self.rng.integers(0, hi, size=batch * 2)
+            if recent is None:
+                s = self.rng.integers(0, hi, size=batch * 2)
+            else:                                          # window ends at least 0 entries before ptr
+                s = (self.ptr - window - self.rng.integers(0, hi, size=batch * 2)) % self.cap
             idx = (s[:, None] + np.arange(window)[None, :]) % self.cap
             ep = self.ep[idx]
             ok = (ep == ep[:, :1]).all(1) & (ep[:, 0] >= 0)
@@ -59,4 +67,4 @@ class SequenceReplay:
         else:
             raise RuntimeError("could not sample valid windows (episodes shorter than the window?)")
         idx = np.stack(chosen[:batch])
-        return dict(obs=self.obs[idx], actions=self.act[idx[:, :-1]], rewards=self.rew[idx[:, :-1]])
+        return dict(obs=self.obs[idx], actions=self.act[idx[:, :-1]], rewards=self.rew[idx[:, :-1]], idx=idx)
