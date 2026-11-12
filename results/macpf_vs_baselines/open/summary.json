@@ -1,0 +1,530 @@
+[
+  {
+    "variant": "macpf",
+    "seeds": 3,
+    "train_auc": 13.77,
+    "train_auc_std": 2.04,
+    "train_final": 25.25,
+    "train_final_std": 8.13,
+    "greedy_final": 5.47,
+    "greedy_final_std": 3.49,
+    "greedy_per_seed": [
+      10.4,
+      3.0,
+      3.0
+    ],
+    "agent_return_per_seed": [
+      [
+        1.8,
+        8.0
+      ],
+      [
+        1.8,
+        1.2
+      ],
+      [
+        2.4,
+        0.6
+      ]
+    ],
+    "idle_rate_per_seed": [
+      [
+        0.815,
+        0.812
+      ],
+      [
+        0.952,
+        0.953
+      ],
+      [
+        0.955,
+        0.955
+      ]
+    ],
+    "beam_freq_per_seed": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "noop_freq_per_seed": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "cells_visited_per_seed": [
+      [
+        16,
+        16
+      ],
+      [
+        11,
+        11
+      ],
+      [
+        10,
+        10
+      ]
+    ],
+    "dep_greedy_final": 5.67,
+    "dep_greedy_per_seed": [
+      11.0,
+      3.0,
+      3.0
+    ]
+  },
+  {
+    "variant": "macpf_a0.001",
+    "seeds": 3,
+    "train_auc": 11.13,
+    "train_auc_std": 4.22,
+    "train_final": 20.48,
+    "train_final_std": 7.07,
+    "greedy_final": 4.07,
+    "greedy_final_std": 1.51,
+    "greedy_per_seed": [
+      3.0,
+      3.0,
+      6.2
+    ],
+    "agent_return_per_seed": [
+      [
+        1.8,
+        1.2
+      ],
+      [
+        0.0,
+        3.0
+      ],
+      [
+        0.0,
+        9.4
+      ]
+    ],
+    "idle_rate_per_seed": [
+      [
+        0.957,
+        0.958
+      ],
+      [
+        0.93,
+        0.93
+      ],
+      [
+        0.317,
+        0.384
+      ]
+    ],
+    "beam_freq_per_seed": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "noop_freq_per_seed": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "cells_visited_per_seed": [
+      [
+        9,
+        9
+      ],
+      [
+        7,
+        9
+      ],
+      [
+        10,
+        9
+      ]
+    ],
+    "dep_greedy_final": 3.53,
+    "dep_greedy_per_seed": [
+      3.0,
+      3.0,
+      4.6
+    ]
+  },
+  {
+    "variant": "macpf_nodetach",
+    "seeds": 3,
+    "train_auc": 17.76,
+    "train_auc_std": 4.2,
+    "train_final": 33.61,
+    "train_final_std": 4.34,
+    "greedy_final": 3.0,
+    "greedy_final_std": 0.0,
+    "greedy_per_seed": [
+      3.0,
+      3.0,
+      3.0
+    ],
+    "agent_return_per_seed": [
+      [
+        0.0,
+        3.0
+      ],
+      [
+        1.8,
+        1.2
+      ],
+      [
+        2.4,
+        0.6
+      ]
+    ],
+    "idle_rate_per_seed": [
+      [
+        1.0,
+        0.955
+      ],
+      [
+        0.912,
+        0.916
+      ],
+      [
+        0.623,
+        0.404
+      ]
+    ],
+    "beam_freq_per_seed": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "noop_freq_per_seed": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "cells_visited_per_seed": [
+      [
+        1,
+        9
+      ],
+      [
+        9,
+        9
+      ],
+      [
+        15,
+        13
+      ]
+    ],
+    "dep_greedy_final": 3.53,
+    "dep_greedy_per_seed": [
+      3.0,
+      4.6,
+      3.0
+    ]
+  },
+  {
+    "variant": "mappo",
+    "seeds": 3,
+    "train_auc": 141.44,
+    "train_auc_std": 30.38,
+    "train_final": 195.5,
+    "train_final_std": 43.62,
+    "greedy_final": 198.0,
+    "greedy_final_std": 43.23,
+    "greedy_per_seed": [
+      164.0,
+      171.0,
+      259.0
+    ],
+    "agent_return_per_seed": [
+      [
+        80.2,
+        82.2
+      ],
+      [
+        88.0,
+        83.0
+      ],
+      [
+        131.0,
+        128.0
+      ]
+    ],
+    "idle_rate_per_seed": [
+      [
+        0.05,
+        0.04
+      ],
+      [
+        0.0,
+        0.01
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "beam_freq_per_seed": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "noop_freq_per_seed": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "cells_visited_per_seed": [
+      [
+        19,
+        19
+      ],
+      [
+        11,
+        14
+      ],
+      [
+        13,
+        14
+      ]
+    ]
+  },
+  {
+    "variant": "ippo",
+    "seeds": 3,
+    "train_auc": 151.44,
+    "train_auc_std": 29.28,
+    "train_final": 213.77,
+    "train_final_std": 29.65,
+    "greedy_final": 216.33,
+    "greedy_final_std": 30.17,
+    "greedy_per_seed": [
+      259.0,
+      195.0,
+      195.0
+    ],
+    "agent_return_per_seed": [
+      [
+        131.0,
+        128.0
+      ],
+      [
+        99.0,
+        96.0
+      ],
+      [
+        96.0,
+        99.0
+      ]
+    ],
+    "idle_rate_per_seed": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.01
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "beam_freq_per_seed": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "noop_freq_per_seed": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "cells_visited_per_seed": [
+      [
+        16,
+        12
+      ],
+      [
+        15,
+        13
+      ],
+      [
+        15,
+        12
+      ]
+    ]
+  },
+  {
+    "variant": "vdn",
+    "seeds": 3,
+    "train_auc": 74.34,
+    "train_auc_std": 6.82,
+    "train_final": 119.43,
+    "train_final_std": 14.96,
+    "greedy_final": 139.67,
+    "greedy_final_std": 19.6,
+    "greedy_per_seed": [
+      155.0,
+      112.0,
+      152.0
+    ],
+    "agent_return_per_seed": [
+      [
+        0.0,
+        155.0
+      ],
+      [
+        112.0,
+        0.0
+      ],
+      [
+        152.0,
+        0.0
+      ]
+    ],
+    "idle_rate_per_seed": [
+      [
+        0.005,
+        0.0
+      ],
+      [
+        0.0,
+        1.0
+      ],
+      [
+        0.005,
+        0.945
+      ]
+    ],
+    "beam_freq_per_seed": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "noop_freq_per_seed": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.005
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "cells_visited_per_seed": [
+      [
+        3,
+        11
+      ],
+      [
+        12,
+        1
+      ],
+      [
+        11,
+        10
+      ]
+    ]
+  }
+]

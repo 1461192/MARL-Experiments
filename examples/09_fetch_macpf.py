@@ -35,9 +35,9 @@ cmp = importlib.import_module("06_compare_learners")      # workers, behaviour s
 
 ROOT = Path(__file__).resolve().parents[1] / "results" / "macpf_vs_baselines"
 BASELINE_ROOT = Path(__file__).resolve().parents[1] / "results" / "mappo_vs_vdn"
-ALGOS = ["macpf", "mappo", "ippo", "vdn"]
-MACPF = ("macpf",)
-cmp.COLORS.update({"mappo": "#c0392b", "ippo": "#8e44ad", "macpf": "#16a085"})
+ALGOS = ["macpf", "macpf_a0.001", "macpf_nodetach", "mappo", "ippo", "vdn"]
+MACPF = ("macpf", "macpf_a0.001", "macpf_nodetach")
+cmp.COLORS.update({"mappo": "#c0392b", "ippo": "#8e44ad", "macpf": "#16a085", "macpf_a0.001": "#7fb800", "macpf_nodetach": "#e6a700"})
 SEEDS = cmp.SEEDS
 STEPS = budget(200_000)
 
@@ -47,6 +47,10 @@ def variants(steps: int):
     quick_macpf = dict(batch_size=2, max_train_len=50) if QUICK else {}
     return {
         "macpf": {"agent": "macpf", "agent_kwargs": quick_macpf},   # paper defaults (sec. 3, appendix C.2 / E)
+        # appendix C.2's other temperature setting (super-hard SMAC maps): fixed alpha = 0.001
+        "macpf_a0.001": {"agent": "macpf", "agent_kwargs": {**quick_macpf, "alpha_start": 0.001, "alpha_end": 0.001}},
+        # as the released code: the dependent losses also train the shared GRU trunk
+        "macpf_nodetach": {"agent": "macpf", "agent_kwargs": {**quick_macpf, "detach_dep_trunk": False}},
         "mappo": {"agent": "mappo", "agent_kwargs": quick_ppo},
         "ippo": {"agent": "ippo", "agent_kwargs": quick_ppo},
         "vdn": {"agent": "vdn", "agent_kwargs": hp(steps)},
