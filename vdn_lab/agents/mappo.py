@@ -185,8 +185,8 @@ def gae(rewards: np.ndarray, values: np.ndarray, next_values: np.ndarray, dones:
     where the episode ended at t (``dones[t]``) or at the last step of the rollout; elsewhere
     V(o_{t+1}) = ``values[t+1]``. The advantage does not run on across an episode end.
 
-    ``lam`` is a float or (adaptive TD(lambda)) an array ``(T,)`` / ``(T, d)`` where ``lam[t]`` weighs
-    ``A_{t+1}`` in ``A_t = delta_t + gamma * lam[t] * A_{t+1}``, i.e. it belongs to step t+1."""
+    ``lam`` is a float or (adaptive TD(lambda)) an array ``(T,)`` / ``(T, d)``: ``A_t = delta_t + gamma *
+    lam[t] * A_{t+1}``, so ``A_t + V_t`` is the lambda-return with ``lambda_t`` (ATD paper eq. 10)."""
     T = len(rewards)
     adv = np.zeros_like(values)
     last = np.zeros(values.shape[1:], dtype=values.dtype)
@@ -347,10 +347,14 @@ class MAPPOAgent(Agent):
         vn = self.value_norm
         # value predictions were stored on the normalised scale of collection time
         old_v = self._denorm(torch.from_numpy(b["values"]).to(dev))
-        lam = self._gae_lambda()
-        adv = gae(b["rewards"], old_v.cpu().numpy(), b["next_values"], b["dones"], c.gamma, lam)
+        adv = gae(b["rewards"], old_v.cpu().numpy(), b["next_values"], b["dones"], c.gamma, c.gae_lambda)
         adv_t = torch.from_numpy(adv).to(dev)
-        returns = adv_t + old_v
+        crit_lam = self._critic_lambda()
+        if crit_lam is None:
+            returns = adv_t + old_v
+        else:                           # critic regresses onto lambda-returns with their own lambda
+            returns = torch.from_numpy(gae(b["rewards"], old_v.cpu().numpy(), b["next_values"], b["dones"],
+                                           c.gamma, crit_lam)).to(dev) + old_v
         if c.value_norm:
             vn.update(returns)
             targets, old_v_n = vn.normalize(returns), vn.normalize(old_v)
@@ -413,10 +417,11 @@ class MAPPOAgent(Agent):
         out["return_mean"] = float(returns.mean().item())
         return out
 
-    def _gae_lambda(self):
-        """lambda for GAE over the current rollout: the fixed ``gae_lambda``, or (adaptive TD(lambda),
-        ``atd.py``) an array ``(T,)`` as described in ``gae``."""
-        return self.cfg.gae_lambda
+    def _critic_lambda(self):
+        """lambda of the critic's return targets: None = the GAE returns (``gae_lambda``), or (adaptive
+        TD(lambda), ``atd.py``) an array ``(T,)`` as described in ``gae``. The actor's advantages always
+        use ``gae_lambda``."""
+        return None
 
     def _value_loss(self, v: torch.Tensor, old_v: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         c = self.cfg

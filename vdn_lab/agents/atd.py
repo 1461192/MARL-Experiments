@@ -1,55 +1,55 @@
 """Adaptive TD(lambda), ATD(lambda), for cooperative MARL.
 
-Deng, Wang & Zhang, *Adaptive TD-Lambda for Cooperative Multi-agent Reinforcement Learning*,
-IJCAI 2026 (arXiv:2605.11880). The paper applies it to QMIX (value-based) and MAPPO (actor-critic);
-it is a plug-in for any learner that builds TD(lambda) / GAE targets, so here it is also wired into
-QPLEX (and VDN).
+Deng, Wang & Zhang, *Adaptive TD-Lambda for Cooperative Multi-agent Reinforcement Learning*, IJCAI 2026
+(arXiv:2605.11880). Section numbers below refer to that paper.
 
-Idea
-----
-A fixed lambda trades bias (small lambda: lean on the bootstrapped value) against variance and
-off-policy error (large lambda: lean on the sampled rewards) in the same way for every sample.
-ATD(lambda) instead picks lambda **per state-action pair**, according to how likely the pair is
-under the stationary distribution of the *current* policy, ``d^pi(s, a)``, relative to the
-distribution of the stored data, ``d^D(s, a)``. That ratio ``w(s, a) = d^pi / d^D`` is not
-computable in a multi-agent game, so it is estimated without likelihoods from two replay buffers:
+Idea (sec. 1, 4.2)
+------------------
+A fixed lambda makes the same bias / variance trade-off for every sample. ATD(lambda) gives each
+state-action pair its own lambda, by how likely the pair is under the *current* policy: a long
+(Monte-Carlo-like) trace through transitions the current policy would generate, a short
+(bootstrapped) one through transitions of older policies, whose returns are biased.
 
-* a **large** buffer of older (off-policy) trajectories, a sample of ``d^D``;
-* a **small** buffer of the newest (near on-policy) trajectories, a sample of ``d^pi``.
+The on-policy degree is a density ratio ``omega(s, a) = d^pi(s, a) / d^D(s, a)`` estimated without
+likelihoods from **two replay buffers** (sec. 4.2, 4.3): the regular large replay buffer
+(``D_off``, older trajectories) and a small buffer of the newest trajectories (``D_on``). By the
+variational f-divergence bound (Nguyen et al. 2010, Theorem 1) with the Jensen-Shannon f, the
+estimator ``omega_phi`` is trained with a binary cross-entropy (eq. 8, appendix A.4)::
 
-A discriminator ``f(s, a)`` (``DensityRatioEstimator``) is trained to tell transitions of the two
-buffers apart (logistic loss, equal numbers from each). At the optimum its logit is
-``log d^pi(s, a) / d^D(s, a)``, so ``w = exp(logit)``. The ratio is then **scaled into lambda**:
-pairs the current policy visits more often than the data suggests get a larger lambda, pairs that
-are mostly old data get a smaller one.
+    L(phi) = BCE_{(s,a) ~ D_off}(omega_phi(s, a), 0) + BCE_{(s,a) ~ D_on}(omega_phi(s, a), 1)
 
-What is from the paper and what is not
---------------------------------------
-The paper text could not be fetched from the environment this was written in (arxiv.org and
-ijcai.org were blocked), so only the parts stated in its abstract and in summaries are taken
-from it: per-state-action lambda; a parametric likelihood-free density-ratio estimator trained
-adversarially on samples of a large and a small replay buffer; the ratio scaled to give lambda;
-used with QMIX and MAPPO; buffer-size ratios of 10x and more studied. The rest follows the
-likelihood-free importance-weight estimator that this construction comes from (Sinha et al.,
-*Experience Replay with Likelihood-free Importance Weights*, L4DC 2022): a classifier between a
-fast and a slow buffer, and batch self-normalisation of ``w`` with a temperature. The scaling
-into lambda (below), the estimator architecture and every number are this implementation's
-choices. Check them against the paper before relying on exact numbers.
+and its output, squashed into (0, 1) by a sigmoid, **is the lambda value** (sec. 4.1). The target
+(eq. 10) is the lambda-return with that lambda::
 
-Scaling (``ATDConfig``)
------------------------
-Within each batch of sampled state-action pairs::
+    R_t = r(s, a) + gamma * [ omega(s, a) R_{t+1} + (1 - omega(s, a)) max_a' Q_tot(s', a' | theta^-) ]
 
-    w~(s, a)    = w(s, a)^(1/T) / mean_batch(w^(1/T))          (self-normalised, mean 1)
-    lambda(s,a) = clip(lambda_base * w~(s, a), lam_min, lam_max)
+Details from the paper (sec. 4.1, 4.3, appendix F/G, algorithm 1):
 
-``lambda_base`` is the base algorithm's own lambda (0.9 for the DQN learners, 0.95 for MAPPO's
-GAE), so the average lambda stays at the base value (up to clipping) and ATD(lambda) only
-redistributes it between pairs. With the estimator untrained, or while both buffers hold the same
-data, ``w = 1`` and the learner is exactly the base algorithm.
+* **Network.** Like the agents' utility network: MLP -> GRU -> linear -> sigmoid, over a
+  trajectory of [state, joint action] (fig. 2). Recurrence helped on SMAC's super-hard maps
+  (fig. 12). ``atd_recurrent=False`` gives the MLP-only version.
+* **Buffers.** ``D_on`` holds the newest trajectories, a 50th of ``D_off`` (fig. 6: 50x was best of
+  10x / 25x / 50x / 100x). Here ``D_on`` is the newest ``buffer_size / 50`` entries of the replay.
+* **Update schedule.** The estimator is updated with the same frequency as the target network,
+  and the lambda of each transition is computed once, cached in the replay buffer, and the cache
+  is cleared at every target-network update (sec. 4.3, appendix F "lambda value cache"), so the
+  targets stay fixed between target updates.
+* **Optimiser.** Adam, lr 1e-3 (table 3, ``lfiw_optim``).
+* **MAPPO (sec. 4.3).** ``D_on`` is the rollout buffer; ``D_off`` keeps the history, 50x larger. The
+  critic regresses onto ATD lambda-returns instead of the GAE returns; the actor update (GAE
+  advantages) is unchanged.
 
-The joint input is the "state" used by the mixers (all agents' observations concatenated) plus
-the one-hot joint action.
+Differences from the paper, all forced by this testbed or left open by it:
+
+* The "state" is all agents' observations concatenated (the agent interface has no global state),
+  so the GRU is not redundant here.
+* The DQN learners train on fixed windows (``burn_in + seq_len + 1``) sampled from the replay; the
+  estimator is trained on windows of the same length from each buffer, its GRU starting from zero
+  at the window start, like the Q-networks.
+* The paper does not say how many estimator steps the MAPPO variant takes per update; here
+  ``atd_steps`` (default 10), each on ``atd_batch`` chunks of ``chunk_len`` steps from each buffer.
+* QMIX+ATD in the paper uses lr 1e-3 against 5e-4 for QMIX and pymarl's td_lambda 0.4 for the
+  baselines (table 3). The comparisons here keep the base learner's hyper-parameters unchanged.
 """
 from __future__ import annotations
 
@@ -70,133 +70,152 @@ from .vdn import VDNAgent
 
 @dataclass
 class ATDConfig:
-    atd_hidden: int = 64          # estimator MLP width (two hidden layers)
-    atd_lr: float = 5e-4          # estimator Adam learning rate
-    atd_batch: int = 128          # transitions from *each* buffer per estimator step
-    atd_small: Optional[int] = None  # size of the small (on-policy) buffer in env steps; None -> learner default
-    atd_large: Optional[int] = None  # size of the large buffer (MAPPO only; the DQN learners use their replay)
-    atd_steps: int = 1            # estimator steps per learner update (DQN) / per rollout (MAPPO)
-    atd_warmup: int = 200         # estimator steps before its lambdas are used (base lambda until then)
-    atd_temperature: float = 2.0  # T in w^(1/T): >1 flattens the ratios
-    lam_min: float = 0.5
-    lam_max: float = 0.99
-    atd_logit_clip: float = 5.0   # |log w| is clipped to this before scaling
+    atd_hidden: int = 64              # estimator width (paper: as the utility network, rnn_hidden_dim 64)
+    atd_recurrent: bool = True        # MLP -> GRU -> head (paper); False: MLP -> head
+    atd_lr: float = 1e-3              # Adam (paper: lfiw_optim Adam, lfiw_optim_lr 0.001)
+    atd_ratio: int = 50               # |D_off| / |D_on| (paper: 50x)
+    atd_steps: Optional[int] = None   # estimator steps per update event; None -> 1 (DQN) / 10 (MAPPO)
+    atd_batch: Optional[int] = None   # sequences from *each* buffer per step; None -> learner's batch size / 32
+    atd_cache: bool = True            # DQN: cache lambda per transition, cleared at each target update
 
     @classmethod
-    def pop_from(cls, kwargs: Dict[str, Any], **defaults: Any) -> "ATDConfig":
+    def pop_from(cls, kwargs: Dict[str, Any]) -> "ATDConfig":
         names = {f.name for f in fields(cls)}
-        own = {k: kwargs.pop(k) for k in list(kwargs) if k in names}
-        return cls(**{**defaults, **own})
+        return cls(**{k: kwargs.pop(k) for k in list(kwargs) if k in names})
 
 
-class DensityRatioEstimator(nn.Module):
-    """``f(s, a) -> log w(s, a)``: MLP over [state, one-hot joint action]."""
+class ATDNetwork(nn.Module):
+    """``omega_phi``: [state, one-hot joint action] sequences -> lambda in (0, 1) per step (logits)."""
 
-    def __init__(self, state_dim: int, n_agents: int, n_actions: int, hidden: int):
+    def __init__(self, state_dim: int, n_agents: int, n_actions: int, hidden: int, recurrent: bool):
         super().__init__()
-        self.n_actions = n_actions
-        self.net = nn.Sequential(nn.Linear(state_dim + n_agents * n_actions, hidden), nn.ReLU(),
-                                 nn.Linear(hidden, hidden), nn.ReLU(), nn.Linear(hidden, 1))
+        self.n_actions, self.hidden, self.recurrent = n_actions, hidden, recurrent
+        self.fc = nn.Linear(state_dim + n_agents * n_actions, hidden)
+        self.gru = nn.GRUCell(hidden, hidden) if recurrent else None
+        self.head = nn.Linear(hidden, 1)
 
-    def forward(self, state: torch.Tensor, actions: torch.Tensor) -> torch.Tensor:
-        """state ``(..., state_dim)``, actions ``(..., d)`` -> logit ``(...)``."""
+    def forward(self, state: torch.Tensor, actions: torch.Tensor,
+                starts: Optional[torch.Tensor] = None) -> torch.Tensor:
+        """state ``(B, T, S)``, actions ``(B, T, d)``, starts ``(B, T)`` (1 where an episode begins,
+        the GRU state is reset there) -> logits ``(B, T)``."""
         onehot = F.one_hot(actions, self.n_actions).float().flatten(-2)
-        return self.net(torch.cat([state, onehot], -1)).squeeze(-1)
+        z = F.relu(self.fc(torch.cat([state, onehot], -1)))
+        if self.recurrent:
+            h = torch.zeros(z.shape[0], self.hidden, device=z.device)
+            outs = []
+            for t in range(z.shape[1]):
+                if starts is not None and t > 0:
+                    h = h * (1.0 - starts[:, t]).unsqueeze(-1)
+                h = self.gru(z[:, t], h)
+                outs.append(h)
+            z = torch.stack(outs, 1)
+        return self.head(z).squeeze(-1)
 
 
 class AdaptiveLambda:
-    """Density-ratio estimator + its optimiser + the ratio -> lambda scaling."""
+    """The estimator, its optimiser and the BCE training step of eq. 8."""
 
-    def __init__(self, cfg: ATDConfig, lam_base: float, state_dim: int, n_agents: int, n_actions: int,
-                 device: str):
-        self.cfg, self.lam_base = cfg, lam_base
-        self.est = DensityRatioEstimator(state_dim, n_agents, n_actions, cfg.atd_hidden).to(device)
-        self.opt = torch.optim.Adam(self.est.parameters(), lr=cfg.atd_lr)
+    def __init__(self, cfg: ATDConfig, state_dim: int, n_agents: int, n_actions: int, device: str):
+        self.cfg = cfg
+        self.net = ATDNetwork(state_dim, n_agents, n_actions, cfg.atd_hidden, cfg.atd_recurrent).to(device)
+        self.opt = torch.optim.Adam(self.net.parameters(), lr=cfg.atd_lr)
         self.n_steps = 0
         self.last: Dict[str, float] = {}
 
-    @property
-    def ready(self) -> bool:
-        return self.n_steps >= self.cfg.atd_warmup
-
-    def train_step(self, s_small, a_small, s_large, a_large) -> float:
-        """One discriminator step: small buffer (label 1) vs large buffer (label 0)."""
-        logits = torch.cat([self.est(s_small, a_small), self.est(s_large, a_large)])
-        labels = torch.cat([torch.ones(len(s_small)), torch.zeros(len(s_large))]).to(logits.device)
-        loss = F.binary_cross_entropy_with_logits(logits, labels)
+    def train_step(self, on: Dict[str, torch.Tensor], off: Dict[str, torch.Tensor]) -> float:
+        """``on`` / ``off``: dicts with ``state (B,T,S)``, ``actions (B,T,d)`` and optional ``starts (B,T)``."""
+        l_on = self.net(on["state"], on["actions"], on.get("starts"))
+        l_off = self.net(off["state"], off["actions"], off.get("starts"))
+        loss = (F.binary_cross_entropy_with_logits(l_on, torch.ones_like(l_on))
+                + F.binary_cross_entropy_with_logits(l_off, torch.zeros_like(l_off)))
         self.opt.zero_grad(set_to_none=True)
         loss.backward()
         self.opt.step()
         self.n_steps += 1
         with torch.no_grad():
-            acc = ((logits > 0).float() == labels).float().mean()
-        self.last = {"atd_loss": float(loss.item()), "atd_acc": float(acc.item())}
+            acc = 0.5 * ((l_on > 0).float().mean() + (l_off <= 0).float().mean())
+        self.last.update(atd_loss=float(loss.item()), atd_acc=float(acc.item()))
         return float(loss.item())
 
     @torch.no_grad()
-    def lambdas(self, state: torch.Tensor, actions: torch.Tensor,
-                mask: Optional[torch.Tensor] = None) -> torch.Tensor:
-        """lambda for every pair, shape of ``state.shape[:-1]``. ``mask`` (same shape, bool) selects
-        the pairs that enter the batch normalisation (default: all)."""
-        c = self.cfg
-        if not self.ready:
-            return torch.full(state.shape[:-1], self.lam_base, device=state.device)
-        log_w = self.est(state, actions).clamp(-c.atd_logit_clip, c.atd_logit_clip) / c.atd_temperature
-        sel = log_w.flatten() if mask is None else log_w[mask]
-        w = torch.exp(log_w - torch.logsumexp(sel, 0) + np.log(sel.numel()))     # / mean(w^(1/T))
-        lam = (self.lam_base * w).clamp(c.lam_min, c.lam_max)
-        lam_sel = lam.flatten() if mask is None else lam[mask]
-        self.last.update(lam_mean=float(lam_sel.mean()), lam_std=float(lam_sel.std()) if lam_sel.numel() > 1 else 0.0,
-                         lam_lo_frac=float((lam_sel <= c.lam_min + 1e-6).float().mean()),
-                         lam_hi_frac=float((lam_sel >= c.lam_max - 1e-6).float().mean()))
-        return lam
+    def lambdas(self, state, actions, starts=None) -> torch.Tensor:
+        return torch.sigmoid(self.net(state, actions, starts))
+
+    def record(self, lam: torch.Tensor) -> None:
+        lam = lam.flatten().float()
+        self.last.update(lam_mean=float(lam.mean()), lam_std=float(lam.std()) if lam.numel() > 1 else 0.0,
+                         lam_lo_frac=float((lam < 0.1).float().mean()), lam_hi_frac=float((lam > 0.9).float().mean()))
 
     def state_dict(self) -> Dict[str, Any]:
-        return dict(est=self.est.state_dict(), opt=self.opt.state_dict(), n_steps=self.n_steps)
+        return dict(net=self.net.state_dict(), opt=self.opt.state_dict(), n_steps=self.n_steps)
 
     def load_state_dict(self, state: Dict[str, Any]) -> None:
-        self.est.load_state_dict(state["est"])
+        self.net.load_state_dict(state["net"])
         self.opt.load_state_dict(state["opt"])
         self.n_steps = state["n_steps"]
 
 
 # ----------------------------------------------------------------- value-based (replay) learners
 class ATDDQNMixin:
-    """ATD(lambda) for the recurrent-DQN learners (VDN / QMIX / QPLEX).
+    """ATD(lambda) for the recurrent-DQN learners (VDN / QMIX / QPLEX), algorithm 1 of the paper.
 
-    Large buffer = the whole replay buffer; small buffer = its ``atd_small`` newest entries
-    (default: a tenth of the replay, the smallest size ratio studied in the paper). Every learner
-    update first takes ``atd_steps`` estimator steps, then uses per-pair lambdas in the
-    lambda-returns of the sampled trajectories."""
+    ``D_off`` = the replay buffer, ``D_on`` = its ``buffer_size / atd_ratio`` newest entries. At every
+    target-network update the estimator takes ``atd_steps`` steps on ``atd_batch`` windows from each
+    buffer and the lambda cache is cleared. Lambdas of the sampled windows come from the cache where
+    present, else from the estimator (and are then cached)."""
 
     def __init__(self, n_agents, n_actions, obs_shape, **kwargs):
         self.atd_cfg = ATDConfig.pop_from(kwargs)
         super().__init__(n_agents, n_actions, obs_shape, **kwargs)
-        if self.atd_cfg.atd_small is None:
-            self.atd_cfg.atd_small = max(1, self.cfg.buffer_size // 10)
-        self.atd = AdaptiveLambda(self.atd_cfg, self.cfg.lam, n_agents * self.obs_dim, n_agents, n_actions,
-                                  self.device)
+        c = self.atd_cfg
+        c.atd_steps = c.atd_steps or 1
+        c.atd_batch = c.atd_batch or self.cfg.batch_size
+        self.atd_small = max(self.cfg.burn_in + self.cfg.seq_len + 1, self.cfg.buffer_size // c.atd_ratio)
+        self.atd = AdaptiveLambda(c, n_agents * self.obs_dim, n_agents, n_actions, self.device)
+        self.lam_cache = np.full(self.cfg.buffer_size, np.nan, dtype=np.float32)
+
+    def observe(self, obs, actions, reward, next_obs, done) -> None:
+        start = self.replay.ptr
+        super().observe(obs, actions, reward, next_obs, done)
+        n = (self.replay.ptr - start) % self.replay.cap                    # entries just (over)written
+        self.lam_cache[(start + np.arange(n)) % self.replay.cap] = np.nan
+
+    def _windows(self, recent: Optional[int]) -> Dict[str, torch.Tensor]:
+        W = self.cfg.burn_in + self.cfg.seq_len + 1
+        b = self.replay.sample(self.atd_cfg.atd_batch, W, recent=recent)
+        return dict(state=self._to_input(b["obs"][:, :-1]).flatten(-2),
+                    actions=torch.from_numpy(b["actions"]).to(self.device))
+
+    def _train_estimator(self) -> None:
+        if len(self.replay) < self.atd_small:
+            return
+        for _ in range(self.atd_cfg.atd_steps):
+            self.atd.train_step(self._windows(self.atd_small), self._windows(None))
+
+    def _on_target_update(self) -> None:
+        super()._on_target_update()
+        self._train_estimator()
+        self.lam_cache[:] = np.nan
+
+    def _trace_lambda(self, obs, actions, idx):
+        """(B, L, 1): lam[:, t] = omega(s_t, a_t) for the L learning steps of the window."""
+        bs, L = self.cfg.burn_in, self.cfg.seq_len
+        steps = idx[:, bs:bs + L]                                               # replay positions
+        cached = self.lam_cache[steps] if self.atd_cfg.atd_cache else np.full(steps.shape, np.nan, np.float32)
+        miss = np.isnan(cached)
+        if miss.any():
+            lam = self.atd.lambdas(obs[:, :bs + L].flatten(-2), actions[:, :bs + L])[:, bs:].cpu().numpy()
+            cached = np.where(miss, lam, cached)
+            if self.atd_cfg.atd_cache:
+                self.lam_cache[steps[miss]] = lam[miss]
+        lam_t = torch.from_numpy(cached).to(obs.device).unsqueeze(-1)
+        self.atd.record(lam_t[:, :-1])                                          # the last one is never used
+        return lam_t
 
     def _learn(self) -> Dict[str, float]:
-        c, R = self.atd_cfg, self.replay
-        for _ in range(c.atd_steps):
-            small, large = R.sample_steps(c.atd_batch, recent=c.atd_small), R.sample_steps(c.atd_batch)
-            self.atd.train_step(self._to_input(small["obs"]).flatten(-2),
-                                torch.from_numpy(small["actions"]).to(self.device),
-                                self._to_input(large["obs"]).flatten(-2),
-                                torch.from_numpy(large["actions"]).to(self.device))
         out = super()._learn()
         out.update(self.atd.last)
         return out
-
-    def _trace_lambda(self, obs, actions):
-        """(B, L, 1): lam[:, t] = lambda(s_{t+1}, a_{t+1}); the last entry is never read."""
-        bs, L = self.cfg.burn_in, self.cfg.seq_len
-        lam = torch.full((obs.shape[0], L, 1), self.cfg.lam, device=obs.device)
-        if L > 1:
-            state = obs[:, bs + 1:bs + L].flatten(-2)                           # (B, L-1, d*F)
-            lam[:, :-1, 0] = self.atd.lambdas(state, actions[:, bs + 1:bs + L])
-        return lam
 
     def state_dict(self):
         return {**super().state_dict(), "atd": self.atd.state_dict(), "atd_cfg": asdict(self.atd_cfg)}
@@ -205,6 +224,7 @@ class ATDDQNMixin:
         super().load_state_dict(state)
         if "atd" in state:
             self.atd.load_state_dict(state["atd"])
+        self.lam_cache[:] = np.nan
 
     def describe(self) -> str:
         return f"{super().describe()} + ATD(lambda)"
@@ -217,62 +237,62 @@ class VDNATDAgent(ATDDQNMixin, VDNAgent):
 
 @register_agent("qmix_atd")
 class QMIXATDAgent(ATDDQNMixin, QMIXAgent):
-    """QMIX with adaptive TD(lambda) (the paper's value-based instance)."""
+    """QMIX with adaptive TD(lambda) (the paper's main value-based instance)."""
 
 
 @register_agent("qplex_atd")
 class QPLEXATDAgent(ATDDQNMixin, QPLEXAgent):
-    """QPLEX with adaptive TD(lambda) (plug-in; QPLEX is a baseline in the paper)."""
+    """QPLEX with adaptive TD(lambda) (paper sec. 5.3, fig. 5)."""
 
 
 # ------------------------------------------------------------------------------------- MAPPO
 @register_agent("mappo_atd")
 class MAPPOATDAgent(MAPPOAgent):
-    """MAPPO with adaptive GAE(lambda).
+    """MAPPO whose critic regresses onto ATD lambda-returns (paper sec. 4.3).
 
-    Small buffer = the current rollout (``rollout_len`` steps, the on-policy data). Large buffer =
-    a FIFO of the last ``atd_large`` steps of earlier rollouts plus this one (default 10 rollouts).
-    Before each PPO update the estimator takes ``atd_steps`` steps, then GAE uses one lambda per
-    time step, ``lambda(s_{t+1}, a_{t+1})`` (shared by the agents, like the team reward)."""
+    ``D_on`` = the current rollout; ``D_off`` = the last ``atd_ratio`` rollouts (this one included).
+    Before each PPO update the estimator takes ``atd_steps`` steps on ``atd_batch`` chunks of
+    ``chunk_len`` steps from each buffer. The critic's targets are ``A^lambda_t + V_t`` with
+    ``lambda_t = omega(s_t, a_t)``; the actor's advantages keep ``gae_lambda``."""
 
     def __init__(self, n_agents, n_actions, obs_shape, **kwargs):
-        rollout = kwargs.get("rollout_len", 1000)
-        self.atd_cfg = ATDConfig.pop_from(kwargs, atd_steps=25, atd_warmup=50, atd_batch=256,
-                                          atd_large=10 * rollout)
+        self.atd_cfg = ATDConfig.pop_from(kwargs)
         super().__init__(n_agents, n_actions, obs_shape, **kwargs)
-        if self.atd_cfg.atd_small is None:
-            self.atd_cfg.atd_small = self.cfg.rollout_len
-        self.atd = AdaptiveLambda(self.atd_cfg, self.cfg.gae_lambda, n_agents * self.obs_dim, n_agents, n_actions,
-                                  self.device)
-        cap = max(1, self.atd_cfg.atd_large // self.cfg.rollout_len)
-        self._history: deque = deque(maxlen=cap)             # (obs, actions) of whole rollouts
+        c = self.atd_cfg
+        c.atd_steps = c.atd_steps or 10
+        c.atd_batch = c.atd_batch or 32
+        self.atd = AdaptiveLambda(c, n_agents * self.obs_dim, n_agents, n_actions, self.device)
+        self._history: deque = deque(maxlen=max(1, c.atd_ratio))     # (obs, actions, starts) per rollout
         self._lam: Optional[np.ndarray] = None
 
+    def _chunks(self, rollouts, n: int) -> Dict[str, torch.Tensor]:
+        L, T = self.cfg.chunk_len, self.cfg.rollout_len
+        r = self.rng.integers(0, len(rollouts), n)
+        s = self.rng.integers(0, T // L, n) * L
+        obs = np.stack([rollouts[i][0][j:j + L] for i, j in zip(r, s)])
+        act = np.stack([rollouts[i][1][j:j + L] for i, j in zip(r, s)])
+        st = np.stack([rollouts[i][2][j:j + L] for i, j in zip(r, s)])
+        return dict(state=self._to_input(obs).flatten(-2), actions=torch.from_numpy(act).to(self.device),
+                    starts=torch.from_numpy(st).to(self.device))
+
     def _learn(self) -> Dict[str, float]:
-        c, b, dev = self.atd_cfg, self.buf, self.device
-        T = self.cfg.rollout_len
-        self._history.append((b["obs"].copy(), b["actions"].copy()))
-        h_obs = np.concatenate([o for o, _ in self._history])
-        h_act = np.concatenate([a for _, a in self._history])
-        small = min(c.atd_small, T)
-        s_small = self._to_input(b["obs"][T - small:]).flatten(-2)
-        a_small = torch.from_numpy(b["actions"][T - small:]).to(dev)
+        b, c = self.buf, self.atd_cfg
+        current = (b["obs"].copy(), b["actions"].copy(), b["starts"].copy())
+        self._history.append(current)
         for _ in range(c.atd_steps):
-            i = self.rng.integers(0, small, c.atd_batch)
-            j = self.rng.integers(0, len(h_obs), c.atd_batch)
-            self.atd.train_step(s_small[i], a_small[i],
-                                self._to_input(h_obs[j]).flatten(-2), torch.from_numpy(h_act[j]).to(dev))
-        # lambda at step t belongs to (s_{t+1}, a_{t+1}); the last entry is cut by GAE anyway
-        state = self._to_input(b["obs"]).flatten(-2)
-        lam_next = self.atd.lambdas(state[1:], torch.from_numpy(b["actions"][1:]).to(dev),
-                                    mask=~torch.from_numpy(b["dones"][:-1]).to(dev))
-        self._lam = np.append(lam_next.cpu().numpy(), self.cfg.gae_lambda).astype(np.float32)
+            self.atd.train_step(self._chunks([current], c.atd_batch), self._chunks(self._history, c.atd_batch))
+        # lambda over the whole rollout as one sequence (GRU reset at episode starts)
+        lam = self.atd.lambdas(self._to_input(b["obs"]).flatten(-2)[None],
+                               torch.from_numpy(b["actions"]).to(self.device)[None],
+                               torch.from_numpy(b["starts"]).to(self.device)[None])[0]
+        self.atd.record(lam)
+        self._lam = lam.cpu().numpy().astype(np.float32)
         out = super()._learn()
         out.update(self.atd.last)
         return out
 
-    def _gae_lambda(self):
-        return self.cfg.gae_lambda if self._lam is None else self._lam
+    def _critic_lambda(self):
+        return self._lam
 
     def state_dict(self):
         return {**super().state_dict(), "atd": self.atd.state_dict(), "atd_cfg": asdict(self.atd_cfg)}

@@ -3,17 +3,17 @@
 Trains, for every Fetch map given (default ``open`` and ``single``), each base learner and its
 ATD(lambda) variant over the same three seeds, budget and episode settings as examples 6, 8 and 9:
 
-* ``qmix``  vs ``qmix_atd``   - per-pair lambda in QMIX's lambda-returns (base lambda 0.9)
+* ``qmix``  vs ``qmix_atd``   - lambda = omega(s, a) per pair in QMIX's lambda-returns (base: fixed 0.9)
 * ``qplex`` vs ``qplex_atd``  - the same for QPLEX
-* ``mappo`` vs ``mappo_atd``  - per-step lambda in MAPPO's GAE (base lambda 0.95)
+* ``mappo`` vs ``mappo_atd``  - omega(s, a) as lambda in the critic's return targets (base: GAE 0.95)
 * ``vdn``                     - reference
-* ``qmix_lam07``, ``qplex_lam07`` - controls: the base learners with a *fixed* lambda of 0.7, about
-                                the average lambda the ATD variants end up using, to separate the
-                                effect of adapting lambda per pair from that of a lower mean lambda
+* ``qmix_lam07``, ``qplex_lam07`` - controls: the base learners with a *fixed* lambda of 0.7, a
+                                lower mean lambda than the base, to separate the effect of adapting
+                                lambda per pair from that of a lower average lambda
 
 QMIX and QPLEX use VDN's hyper-parameters (``_common.hp``), MAPPO the defaults of Yu et al. 2022.
-The ATD(lambda) variants add only the density-ratio estimator, with the defaults in
-``vdn_lab/agents/atd.py``; nothing was tuned for this task. ``vdn`` and ``mappo`` are taken from
+The ATD(lambda) variants add only the estimator, with the paper's settings (``vdn_lab/agents/atd.py``);
+nothing was tuned for this task. ``vdn`` and ``mappo`` are taken from
 the saved runs of example 8 (``results/mappo_vs_vdn/<map>/runs``) when they are there.
 
 Each ATD run also records the estimator's statistics (classification accuracy between the two
@@ -55,16 +55,15 @@ TRACE_EVERY = 10_000
 
 def variants(steps: int):
     quick_ppo = dict(rollout_len=500, ppo_epochs=2) if QUICK else {}
-    quick_atd = dict(atd_warmup=5) if QUICK else {}
     return {
         "qmix": {"agent": "qmix", "agent_kwargs": hp(steps)},
-        "qmix_atd": {"agent": "qmix_atd", "agent_kwargs": hp(steps, **quick_atd)},
+        "qmix_atd": {"agent": "qmix_atd", "agent_kwargs": hp(steps)},
         "qmix_lam07": {"agent": "qmix", "agent_kwargs": hp(steps, lam=0.7)},
         "qplex": {"agent": "qplex", "agent_kwargs": hp(steps)},
         "qplex_lam07": {"agent": "qplex", "agent_kwargs": hp(steps, lam=0.7)},
-        "qplex_atd": {"agent": "qplex_atd", "agent_kwargs": hp(steps, **quick_atd)},
+        "qplex_atd": {"agent": "qplex_atd", "agent_kwargs": hp(steps)},
         "mappo": {"agent": "mappo", "agent_kwargs": quick_ppo},
-        "mappo_atd": {"agent": "mappo_atd", "agent_kwargs": {**quick_ppo, **quick_atd}},
+        "mappo_atd": {"agent": "mappo_atd", "agent_kwargs": quick_ppo},
         "vdn": {"agent": "vdn", "agent_kwargs": hp(steps)},
     }
 
@@ -169,8 +168,8 @@ def report(m, results):
             extra.append(f"| {b}_lam07 (fixed lambda 0.7) | {[round(float(v), 1) for v in ga - gc]} | "
                          f"{(ga - gc).mean():+.1f} | {(aa - ac).mean():+.1f} |")
     extra += ["", "ATD(lambda) estimator over training (mean over seeds; acc = accuracy telling the small "
-              "buffer from the large one, 0.5 = cannot tell them apart; lo / hi = fraction of lambdas clipped "
-              "at lam_min / lam_max):", "",
+              "buffer from the large one, 0.5 = cannot tell them apart; lo / hi = fraction of lambdas below 0.1 "
+              "/ above 0.9):", "",
               "| variant | steps | acc | lambda mean | lambda std | lo | hi |", "|---|---|---|---|---|---|---|"]
     for a in ATD:
         traces = [r.get("atd_trace", []) for r in results.get(a, [])]
