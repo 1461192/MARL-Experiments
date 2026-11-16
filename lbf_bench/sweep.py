@@ -36,7 +36,8 @@ def main(argv=None):
     for seed in a.seeds:
         js = [(algo, task, seed) for algo in a.algos for task in a.tasks
               if not (Path(a.out) / task / algo / f"seed{seed}" / "result.json").exists()]
-        js.sort(key=lambda j: -COST.get(j[0], 60) * TASK_COST[j[1]])
+        started = lambda j: (Path(a.out) / j[1] / j[0] / f"seed{j[2]}" / "ckpt.pt").exists()
+        js.sort(key=lambda j: (not started(j), -COST.get(j[0], 60) * TASK_COST[j[1]]))   # resume first
         jobs += js
     print(f"{len(jobs)} jobs to run", flush=True)
     logs = Path(a.out) / "logs"
@@ -46,7 +47,7 @@ def main(argv=None):
         algo, task, seed = job
         log = logs / f"{task}__{algo}__s{seed}.log"
         t0 = time.time()
-        with open(log, "w") as f:
+        with open(log, "a") as f:
             rc = subprocess.call([sys.executable, "-m", "lbf_bench.run", "--algo", algo, "--task", task,
                                   "--seed", str(seed), "--out", a.out], stdout=f, stderr=subprocess.STDOUT)
         print(f"{time.strftime('%H:%M:%S')} {'ok ' if rc == 0 else f'FAIL({rc})'} {task} {algo} s{seed} "

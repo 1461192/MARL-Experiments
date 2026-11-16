@@ -49,7 +49,7 @@ def _bin(rows: List[tuple], t_max: int, n_bins: int) -> List[list]:
 
 def train(algo_name: str, task: str, seed: int, out_root: str, t_max: Optional[int] = None,
           n_evals: int = 41, eval_episodes: int = 100, overrides: Optional[Dict] = None,
-          tag: Optional[str] = None) -> Path:
+          tag: Optional[str] = None, ckpt_every: float = 900) -> Path:
     torch.set_num_threads(1)
     spec = ALGOS[algo_name]
     t_max = int(t_max or spec.t_max)
@@ -63,29 +63,41 @@ def train(algo_name: str, task: str, seed: int, out_root: str, t_max: Optional[i
     out.mkdir(parents=True, exist_ok=True)
 
     interval = t_max / (n_evals - 1)
-    eval_t, eval_mean, eval_std = [], [], []
-    train_rows: List[tuple] = []
-    t_env, next_eval, episodes = 0, 0.0, 0
-    t0 = time.time()
-    last_print = t0
+    ckpt = out / "ckpt.pt"
+    st = dict(algo=algo, collector=collector, eval_collector=eval_collector, eval_t=[], eval_mean=[], eval_std=[],
+              train_rows=[], t_env=0, next_eval=0.0, episodes=0, elapsed=0.0)
+    if ckpt.exists():                                   # resume an interrupted run
+        st = torch.load(ckpt, weights_only=False)
+        torch.set_rng_state(st.pop("torch_rng"))
+        print(f"[{name} {task} s{seed}] resumed at t={st['t_env']}", flush=True)
+    algo, collector, eval_collector = st["algo"], st["collector"], st["eval_collector"]
+    t0 = time.time() - st["elapsed"]
+    last_print = last_ckpt = time.time()
     while True:
-        if t_env >= next_eval - 1e-9:
-            rets = evaluate(algo, eval_collector, eval_episodes, t_env)
-            eval_t.append(t_env), eval_mean.append(float(rets.mean())), eval_std.append(float(rets.std()))
-            next_eval += interval
-            if time.time() - last_print > 60 or len(eval_t) == 1:
-                print(f"[{name} {task} s{seed}] t={t_env} eval={rets.mean():.3f} "
+        if st["t_env"] >= st["next_eval"] - 1e-9:
+            rets = evaluate(algo, eval_collector, eval_episodes, st["t_env"])
+            st["eval_t"].append(st["t_env"]), st["eval_mean"].append(float(rets.mean()))
+            st["eval_std"].append(float(rets.std()))
+            st["next_eval"] += interval
+            if time.time() - last_print > 60 or len(st["eval_t"]) == 1:
+                print(f"[{name} {task} s{seed}] t={st['t_env']} eval={rets.mean():.3f} "
                       f"({time.time() - t0:.0f}s)", flush=True)
                 last_print = time.time()
-        if t_env >= t_max:
+        if st["t_env"] >= t_max:
             break
-        batch = collector.run(algo, explore=True, t_env=t_env)
-        steps = int(batch["length"].sum())
-        t_env += steps
-        episodes += len(batch["length"])
-        algo.train(batch, t_env)
+        batch = collector.run(algo, explore=True, t_env=st["t_env"])
+        st["t_env"] += int(batch["length"].sum())
+        st["episodes"] += len(batch["length"])
+        algo.train(batch, st["t_env"])
         for ret in batch["reward"].sum(1):
-            train_rows.append((t_env, float(ret)))
+            st["train_rows"].append((st["t_env"], float(ret)))
+        if ckpt_every and time.time() - last_ckpt > ckpt_every:
+            st["elapsed"] = time.time() - t0
+            torch.save({**st, "torch_rng": torch.get_rng_state()}, out / "ckpt.pt.tmp")
+            os.replace(out / "ckpt.pt.tmp", ckpt)
+            last_ckpt = time.time()
+    eval_t, eval_mean, eval_std = st["eval_t"], st["eval_mean"], st["eval_std"]
+    train_rows, episodes = st["train_rows"], st["episodes"]
 
     wall = time.time() - t0
     n_bins = 200
@@ -102,6 +114,8 @@ def train(algo_name: str, task: str, seed: int, out_root: str, t_max: Optional[i
     tmp = out / "result.json.tmp"
     tmp.write_text(json.dumps(result))
     os.replace(tmp, out / "result.json")
+    if ckpt.exists():
+        ckpt.unlink()
     print(f"[{name} {task} s{seed}] done in {wall:.0f}s, final eval {eval_mean[-1]:.3f}, "
           f"max eval {max(eval_mean):.3f}", flush=True)
     return out

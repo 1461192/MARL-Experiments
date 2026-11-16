@@ -8,9 +8,11 @@ Precedence of sources (see README "LBF benchmark" for the full table and the rea
    20M for on-policy algorithms; 41 evaluations of 100 episodes. Its implementation is EPyMARL, which fills in
    the structural details (episode batches, Double-Q, n-step critic targets, target critic, ...).
 2. The algorithm's own paper, for algorithms the benchmark does not include:
-   * QPLEX (Wang et al., ICLR 2021, appendix B.2 / table 2): PyMARL defaults (RMSprop lr 5e-4, GRU 64, batch 32,
-     5000-episode buffer, epsilon 1 -> 0.05 over 50k steps, target update every 200 episodes), two gradient
-     updates per collected episode, SMAC mixer configuration (1 layer, 4 heads, stop-gradient on A_i).
+   * QPLEX (Wang et al., ICLR 2021, table 2): the SMAC mixer configuration (1 layer, 4 heads, stop-gradient on
+     A_i). Its training settings (appendix B.2: PyMARL defaults, epsilon 1 -> 0.05 over 50k steps, RMSprop lr 5e-4,
+     two updates per episode, hard target every 200 episodes) never got above a return of 0 on LBF (8x8-2p-2f-c, 700k
+     steps), so - by the user's decision - QPLEX uses the benchmark's LBF settings for QMIX instead, which also
+     makes QMIX vs QPLEX differ only in the mixer.
    * MACPF (Wang, Ye & Lu, ICLR 2023, appendix C.2): see ``macpf.py``.
    * ATD(lambda) (Deng, Wang & Zhang, IJCAI 2026, table 3 and sec. 4): estimator MLP-GRU(64), Adam lr 1e-3,
      buffer ratio 50x, an estimator step and a lambda-cache clear every target-update period. Each ATD variant
@@ -44,10 +46,11 @@ ALGOS: Dict[str, AlgoSpec] = {
     # benchmark paper, table 28 (QMIX, parameter sharing, LBF)
     "qmix": AlgoSpec(QLearner, dict(hidden=64, lr=3e-4, optim="adam", mixer="qmix", eps_anneal=200_000,
                                     eval_eps=0.05, target=0.01, std_rewards=True), label="QMIX", base="qmix"),
-    # QPLEX paper, appendix B.2 + PyMARL defaults
-    "qplex": AlgoSpec(QLearner, dict(hidden=64, lr=5e-4, optim="rmsprop", mixer="qplex", qplex_heads=4,
-                                     qplex_layers=1, eps_anneal=50_000, eval_eps=0.0, target=200,
-                                     std_rewards=False, updates_per_episode=2), label="QPLEX", base="qplex"),
+    # QPLEX's mixer (QPLEX paper, table 2, SMAC column) trained with QMIX's LBF settings from the benchmark
+    # (its own SMAC settings - epsilon over 50k steps, RMSprop, no reward standardisation - did not learn LBF)
+    "qplex": AlgoSpec(QLearner, dict(hidden=64, lr=3e-4, optim="adam", mixer="qplex", qplex_heads=4, qplex_layers=1,
+                                     eps_anneal=200_000, eval_eps=0.05, target=0.01, std_rewards=True),
+                      label="QPLEX", base="qplex"),
     # benchmark paper, table 24 (MAPPO, parameter sharing, LBF); EPyMARL: 10 parallel episodes per update
     "mappo": AlgoSpec(ACLearner, dict(hidden=128, lr=3e-4, use_rnn=False, critic="central", entropy=0.001, nstep=5,
                                       target=0.01, std_rewards=False, epochs=4, ppo_clip=0.2), n_envs=10,
