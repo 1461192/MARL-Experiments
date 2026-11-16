@@ -49,7 +49,7 @@ def _bin(rows: List[tuple], t_max: int, n_bins: int) -> List[list]:
 
 def train(algo_name: str, task: str, seed: int, out_root: str, t_max: Optional[int] = None,
           n_evals: int = 41, eval_episodes: int = 100, overrides: Optional[Dict] = None,
-          tag: Optional[str] = None, ckpt_every: float = 900) -> Path:
+          tag: Optional[str] = None, ckpt_every: float = 300) -> Path:
     torch.set_num_threads(1)
     spec = ALGOS[algo_name]
     t_max = int(t_max or spec.t_max)
