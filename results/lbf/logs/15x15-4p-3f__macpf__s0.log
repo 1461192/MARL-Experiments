@@ -35,3 +35,10 @@
 [macpf 15x15-4p-3f s0] t=1600042 eval=0.023 (6925s)
 [macpf 15x15-4p-3f s0] t=1650042 eval=0.022 (7140s)
 [macpf 15x15-4p-3f s0] t=1700042 eval=0.027 (7346s)
+[macpf 15x15-4p-3f s0] t=1750042 eval=0.040 (7555s)
+[macpf 15x15-4p-3f s0] t=1800042 eval=0.046 (7763s)
+[macpf 15x15-4p-3f s0] t=1850042 eval=0.047 (7980s)
+[macpf 15x15-4p-3f s0] t=1900042 eval=0.037 (8195s)
+[macpf 15x15-4p-3f s0] t=1950042 eval=0.026 (8419s)
+[macpf 15x15-4p-3f s0] t=2000042 eval=0.014 (8635s)
+[macpf 15x15-4p-3f s0] done in 8635s, final eval 0.014, max eval 0.054
