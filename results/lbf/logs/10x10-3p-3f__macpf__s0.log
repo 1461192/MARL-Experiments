@@ -1,0 +1,2 @@
+[macpf 10x10-3p-3f s0] t=0 eval=0.015 (1s)
+[macpf 10x10-3p-3f s0] t=50003 eval=0.004 (134s)

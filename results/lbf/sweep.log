@@ -13,3 +13,6 @@
 23:22:13 ok  15x15-3p-5f mappo_atd s0 84 min
 23:24:16 ok  15x15-3p-5f mappo_l0.95 s0 71 min
 23:34:02 ok  15x15-4p-5f qplex s0 40 min
+23:58:29 ok  15x15-4p-3f qplex_atd s0 42 min
+00:02:26 ok  15x15-4p-3f qplex_l0.4 s0 38 min
+00:03:44 ok  15x15-4p-5f qplex_atd s0 42 min
