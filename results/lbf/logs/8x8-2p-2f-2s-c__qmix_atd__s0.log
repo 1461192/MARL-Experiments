@@ -28,3 +28,6 @@
 [qmix_atd 8x8-2p-2f-2s-c s0] t=1750008 eval=0.990 (2237s)
 [qmix_atd 8x8-2p-2f-2s-c s0] t=1800003 eval=0.995 (2324s)
 [qmix_atd 8x8-2p-2f-2s-c s0] t=1850010 eval=1.000 (2407s)
+[qmix_atd 8x8-2p-2f-2s-c s0] t=1900014 eval=0.990 (2490s)
+[qmix_atd 8x8-2p-2f-2s-c s0] t=1950006 eval=0.980 (2572s)
+[qmix_atd 8x8-2p-2f-2s-c s0] resumed at t=1847679

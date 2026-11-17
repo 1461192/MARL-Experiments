@@ -9,6 +9,8 @@ The environment itself is the reference implementation, ``lbforaging`` (semitabl
 * turns the per-agent rewards into one **common reward** (their sum, EPyMARL's default
   ``common_reward=True, reward_scalarisation="sum"``); the rewards are normalised by lbforaging so the
   team return of an episode in which every item is collected is 1,
+* restores the item-level rule of lbforaging v1 (the version the benchmark used, task ids ``Foraging-...-v1``,
+  see ``V1ItemLevels``),
 * separates *termination* (every item collected) from *truncation* (time limit). lbforaging reports both
   as ``done``; the learners bootstrap on truncation but not on termination.
 """
@@ -19,6 +21,22 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 from lbforaging.foraging.environment import ForagingEnv
+
+
+class V1ItemLevels(ForagingEnv):
+    """``ForagingEnv`` (lbforaging 2.0) with the item levels of lbforaging 1.0.x, which the benchmark used.
+
+    Both versions draw agent levels from {1, 2} and bound an item's level by S, the sum of the three lowest
+    agent levels. v1 draws a non-cooperative item's level with ``randint(1, S)`` - numpy's exclusive upper
+    bound, so 1..S-1 - while v2 draws it from 1..S inclusive. With three agents that takes the share of items
+    that need *all* agents from about 2% (v1) to about 25% (v2). Cooperative (``force_coop``) items are S in
+    both versions. Everything else (placement, dynamics, rewards, observations) is lbforaging 2.0's code.
+    """
+
+    def spawn_food(self, max_num_food, min_levels, max_levels):
+        if not self.force_coop and self.max_food_level is None:
+            max_levels = np.maximum(np.asarray(max_levels) - 1, np.asarray(min_levels))
+        return super().spawn_food(max_num_food, min_levels, max_levels)
 
 
 @dataclass(frozen=True)
@@ -57,7 +75,7 @@ class LBFEnv:
 
     def __init__(self, task: str | TaskSpec, seed: Optional[int] = None):
         self.spec = TASKS[task] if isinstance(task, str) else task
-        self.env = ForagingEnv(**self.spec.kwargs())
+        self.env = V1ItemLevels(**self.spec.kwargs())
         self.n_agents = self.spec.players
         self.n_actions = 6
         self.obs_dim = int(self.env.observation_space[0].shape[0])

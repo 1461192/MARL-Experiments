@@ -7,3 +7,5 @@
 [qmix_l0.4 8x8-2p-2f-2s-c s0] t=600017 eval=0.660 (489s)
 [qmix_l0.4 8x8-2p-2f-2s-c s0] t=700032 eval=0.800 (589s)
 [qmix_l0.4 8x8-2p-2f-2s-c s0] t=800008 eval=0.935 (700s)
+[qmix_l0.4 8x8-2p-2f-2s-c s0] t=850023 eval=0.940 (761s)
+[qmix_l0.4 8x8-2p-2f-2s-c s0] resumed at t=710443

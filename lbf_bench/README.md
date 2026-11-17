@@ -7,7 +7,7 @@ Level-Based Foraging (LBF) tasks of
 > Algorithms in Cooperative Tasks*, NeurIPS 2021 Datasets & Benchmarks (arXiv:2006.07869v4),
 
 with the environment from [semitable/lb-foraging](https://github.com/semitable/lb-foraging)
-(`pip install lbforaging`, v2.0.0, used unmodified).
+(`pip install lbforaging`, v2.0.0, with lbforaging v1's item-level rule restored; see below).
 
 | name | algorithm | source of its hyper-parameters |
 |---|---|---|
@@ -29,9 +29,8 @@ pytest -q tests/test_lbf_bench.py
 ## Environment and tasks
 
 The seven tasks of the benchmark (sec. 3.4, table 3), each with a 50-step time limit (appendix A,
-`env_args.time_limit=50`). Agent levels are 1–2, and item levels are random up to the sum of the agents'
-levels (lbforaging's defaults). `-2s` means each agent sees only a 5×5 window (sight 2). `-c` means every
-item needs all agents to load it at once.
+`env_args.time_limit=50`). Agent levels are 1–2. `-2s` means each agent sees only a 5×5 window (sight 2).
+`-c` means every item needs all agents to load it at once.
 
 `8x8-2p-2f-c`, `8x8-2p-2f-2s-c`, `10x10-3p-3f`, `10x10-3p-3f-2s`, `15x15-3p-5f`, `15x15-4p-3f`, `15x15-4p-5f`
 
@@ -42,6 +41,16 @@ item needs all agents to load it at once.
   -1, -1, 0 when an entity is not visible) plus a one-hot agent id. The global state used by the mixers,
   centralised critics and the ATD estimator is all agents' observations concatenated, as in EPyMARL's
   wrapper.
+* **Item levels as in lbforaging v1.** The benchmark used lbforaging 1.0.x (task ids `Foraging-…-v1`).
+  Let S be the sum of the three lowest agent levels. v1 draws a non-cooperative item's level from 1…S−1
+  (`randint(1, S)`, exclusive upper bound); v2.0.0 draws it from 1…S. With three agents, v2 raises the
+  share of items that only *all* agents together can load from about 2% to about 25% (and the share that
+  needs more than one agent from 45% to 58%). `env.V1ItemLevels` restores v1's rule; everything else is
+  lbforaging 2.0.0's code. Cooperative items are S in both versions, so the two `-c` tasks are unaffected.
+  This was found after seed 0 had run with v2's rule: MAPPO and QMIX were far below the paper on the
+  non-cooperative tasks (e.g. MAPPO 0.12 vs. 0.77 on `15x15-3p-5f`, QMIX 0.12 vs. 0.84 on `10x10-3p-3f`)
+  and in line with it on the cooperative ones. Those 50 runs are kept in `results/lbf_v2items/` and are
+  not part of the study.
 * **Termination vs time limit.** lbforaging reports both as `done`. Here they are separated: an episode
   *terminates* when every item has been collected and is *truncated* at the time limit. Value targets
   bootstrap on truncation and not on termination.

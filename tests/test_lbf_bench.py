@@ -144,3 +144,20 @@ def test_qplex_mixer_igm():
         qt = mix(q.expand(len(joint), 1, n, A), joint[:, None], s.expand(len(joint), 1, S)).squeeze()
         greedy = q[0, 0].argmax(-1)
         assert qt.max() <= qt[(joint == greedy).all(1)].item() + 1e-5
+
+
+def test_item_levels_follow_lbforaging_v1():
+    """Non-cooperative items are 1..S-1 (S = sum of the 3 lowest agent levels), cooperative ones exactly S."""
+    for name, coop in (("10x10-3p-3f", False), ("15x15-4p-5f", False), ("8x8-2p-2f-c", True)):
+        env = LBFEnv(name, seed=3)
+        seen_max = False
+        for _ in range(300):
+            env.reset()
+            s = sum(sorted(p.level for p in env.env.players)[:3])
+            items = env.env.field[env.env.field > 0]
+            if coop:
+                assert (items == s).all()
+            else:
+                assert items.min() >= 1 and items.max() <= max(s - 1, 1)
+                seen_max |= bool((items == s - 1).any())
+        assert coop or seen_max
