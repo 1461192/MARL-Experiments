@@ -14,3 +14,9 @@
 [qmix_atd 15x15-3p-5f s0] t=1300000 eval=0.024 (1362s)
 [qmix_atd 15x15-3p-5f s0] t=1400000 eval=0.028 (1464s)
 [qmix_atd 15x15-3p-5f s0] t=1500000 eval=0.021 (1567s)
+[qmix_atd 15x15-3p-5f s0] t=1600000 eval=0.044 (1669s)
+[qmix_atd 15x15-3p-5f s0] t=1700000 eval=0.022 (1771s)
+[qmix_atd 15x15-3p-5f s0] t=1800000 eval=0.038 (1874s)
+[qmix_atd 15x15-3p-5f s0] t=1900000 eval=0.036 (1975s)
+[qmix_atd 15x15-3p-5f s0] t=2000000 eval=0.025 (2074s)
+[qmix_atd 15x15-3p-5f s0] done in 2074s, final eval 0.025, max eval 0.056
