@@ -1,0 +1,8 @@
+[qplex 10x10-3p-3f-2s s0] t=0 eval=0.015 (1s)
+[qplex 10x10-3p-3f-2s s0] t=100025 eval=0.356 (101s)
+[qplex 10x10-3p-3f-2s s0] t=200020 eval=0.219 (206s)
+[qplex 10x10-3p-3f-2s s0] t=300010 eval=0.197 (307s)
+[qplex 10x10-3p-3f-2s s0] t=400028 eval=0.275 (400s)
+[qplex 10x10-3p-3f-2s s0] t=500004 eval=0.347 (496s)
+[qplex 10x10-3p-3f-2s s0] t=600037 eval=0.560 (600s)
+[qplex 10x10-3p-3f-2s s0] t=700028 eval=0.688 (709s)
