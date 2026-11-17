@@ -37,3 +37,4 @@
 [mappo_atd 10x10-3p-3f-2s s0] t=18000352 eval=0.598 (4427s)
 [mappo_atd 10x10-3p-3f-2s s0] t=18500323 eval=0.608 (4544s)
 [mappo_atd 10x10-3p-3f-2s s0] t=19000346 eval=0.676 (4666s)
+[mappo_atd 10x10-3p-3f-2s s0] resumed at t=18330665
