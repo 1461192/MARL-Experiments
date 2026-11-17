@@ -29,3 +29,8 @@
 [qplex_l0.4 15x15-4p-5f s0] t=1700000 eval=0.011 (2079s)
 [qplex_l0.4 15x15-4p-5f s0] t=1750000 eval=0.008 (2147s)
 [qplex_l0.4 15x15-4p-5f s0] t=1800000 eval=0.017 (2214s)
+[qplex_l0.4 15x15-4p-5f s0] t=1850000 eval=0.019 (2280s)
+[qplex_l0.4 15x15-4p-5f s0] t=1900000 eval=0.009 (2346s)
+[qplex_l0.4 15x15-4p-5f s0] t=1950000 eval=0.012 (2413s)
+[qplex_l0.4 15x15-4p-5f s0] t=2000000 eval=0.009 (2485s)
+[qplex_l0.4 15x15-4p-5f s0] done in 2485s, final eval 0.009, max eval 0.039
