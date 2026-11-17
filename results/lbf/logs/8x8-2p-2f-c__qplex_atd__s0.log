@@ -4,3 +4,8 @@
 [qplex_atd 8x8-2p-2f-c s0] t=300025 eval=0.230 (265s)
 [qplex_atd 8x8-2p-2f-c s0] t=400028 eval=0.355 (353s)
 [qplex_atd 8x8-2p-2f-c s0] t=500035 eval=0.480 (444s)
+[qplex_atd 8x8-2p-2f-c s0] t=600015 eval=0.760 (540s)
+[qplex_atd 8x8-2p-2f-c s0] t=650007 eval=0.890 (601s)
+[qplex_atd 8x8-2p-2f-c s0] t=700004 eval=0.945 (683s)
+[qplex_atd 8x8-2p-2f-c s0] t=750010 eval=0.935 (781s)
+[qplex_atd 8x8-2p-2f-c s0] t=800004 eval=0.990 (882s)
