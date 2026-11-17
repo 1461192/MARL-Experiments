@@ -82,3 +82,6 @@
 14:43:49 ok  15x15-3p-5f macpf s0 109 min
 14:46:23 ok  15x15-4p-5f mappo_l0.95 s0 86 min
 15:00:15 ok  15x15-4p-3f mappo s0 98 min
+15:41:30 ok  15x15-4p-3f qplex s0 41 min
+15:52:40 ok  15x15-3p-5f mappo_l0.95 s0 66 min
+16:02:25 ok  15x15-3p-5f mappo_atd s0 79 min
