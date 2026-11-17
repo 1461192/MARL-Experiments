@@ -74,3 +74,7 @@
 192 jobs to run
 11:07:48 ok  8x8-2p-2f-2s-c qmix_atd s0 4 min
 11:34:34 ok  8x8-2p-2f-2s-c qmix_l0.4 s0 31 min
+12:55:08 ok  15x15-4p-3f mappo_atd s0 107 min
+13:12:35 ok  15x15-4p-5f mappo_atd s0 98 min
+13:20:37 ok  15x15-4p-3f macpf s0 137 min
+13:22:23 ok  15x15-4p-5f macpf s0 139 min
