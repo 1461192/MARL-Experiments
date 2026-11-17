@@ -20,3 +20,7 @@
 [mappo 10x10-3p-3f s0] t=9500191 eval=0.977 (2127s)
 [mappo 10x10-3p-3f s0] t=10000122 eval=0.946 (2248s)
 [mappo 10x10-3p-3f s0] t=10500200 eval=0.989 (2370s)
+[mappo 10x10-3p-3f s0] t=11000009 eval=0.974 (2495s)
+[mappo 10x10-3p-3f s0] t=11500158 eval=0.959 (2615s)
+[mappo 10x10-3p-3f s0] t=12000242 eval=0.983 (2735s)
+[mappo 10x10-3p-3f s0] t=12500244 eval=0.945 (2857s)
