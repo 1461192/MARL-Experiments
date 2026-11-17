@@ -11,3 +11,4 @@
 [qplex 15x15-4p-3f s0] t=500048 eval=0.007 (639s)
 [qplex 15x15-4p-3f s0] t=550048 eval=0.011 (700s)
 [qplex 15x15-4p-3f s0] t=600048 eval=0.012 (762s)
+[qplex 15x15-4p-3f s0] t=650048 eval=0.003 (825s)
