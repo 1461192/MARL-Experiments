@@ -31,3 +31,7 @@
 [qmix_atd 8x8-2p-2f-2s-c s0] t=1900014 eval=0.990 (2490s)
 [qmix_atd 8x8-2p-2f-2s-c s0] t=1950006 eval=0.980 (2572s)
 [qmix_atd 8x8-2p-2f-2s-c s0] resumed at t=1847679
+[qmix_atd 8x8-2p-2f-2s-c s0] t=1900014 eval=0.990 (2485s)
+[qmix_atd 8x8-2p-2f-2s-c s0] t=1950006 eval=0.980 (2565s)
+[qmix_atd 8x8-2p-2f-2s-c s0] t=2000008 eval=0.990 (2646s)
+[qmix_atd 8x8-2p-2f-2s-c s0] done in 2646s, final eval 0.990, max eval 1.000
