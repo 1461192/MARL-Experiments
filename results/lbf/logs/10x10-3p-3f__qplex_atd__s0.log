@@ -18,3 +18,5 @@
 [qplex_atd 10x10-3p-3f s0] t=1700042 eval=0.044 (1653s)
 [qplex_atd 10x10-3p-3f s0] t=1800042 eval=0.048 (1751s)
 [qplex_atd 10x10-3p-3f s0] t=1900042 eval=0.099 (1849s)
+[qplex_atd 10x10-3p-3f s0] t=2000042 eval=0.107 (1945s)
+[qplex_atd 10x10-3p-3f s0] done in 1945s, final eval 0.107, max eval 0.107

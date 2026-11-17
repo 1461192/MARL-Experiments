@@ -1,0 +1,6 @@
+[mappo 8x8-2p-2f-c s0] t=0 eval=0.010 (0s)
+[mappo 8x8-2p-2f-c s0] t=500372 eval=0.100 (61s)
+[mappo 8x8-2p-2f-c s0] t=1000122 eval=0.985 (146s)
+[mappo 8x8-2p-2f-c s0] t=1500025 eval=1.000 (245s)
+[mappo 8x8-2p-2f-c s0] t=2000084 eval=1.000 (351s)
+[mappo 8x8-2p-2f-c s0] t=2500097 eval=1.000 (458s)
