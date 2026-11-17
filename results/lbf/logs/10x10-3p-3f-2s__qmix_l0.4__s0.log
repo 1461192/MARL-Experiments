@@ -16,3 +16,7 @@
 [qmix_l0.4 10x10-3p-3f-2s s0] t=1500030 eval=0.494 (1593s)
 [qmix_l0.4 10x10-3p-3f-2s s0] t=1600047 eval=0.434 (1705s)
 [qmix_l0.4 10x10-3p-3f-2s s0] t=1700044 eval=0.470 (1818s)
+[qmix_l0.4 10x10-3p-3f-2s s0] t=1800044 eval=0.429 (1934s)
+[qmix_l0.4 10x10-3p-3f-2s s0] t=1900013 eval=0.418 (2042s)
+[qmix_l0.4 10x10-3p-3f-2s s0] t=2000042 eval=0.571 (2148s)
+[qmix_l0.4 10x10-3p-3f-2s s0] done in 2148s, final eval 0.571, max eval 0.571
