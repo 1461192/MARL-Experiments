@@ -34,3 +34,4 @@
 [mappo 15x15-3p-5f s0] t=15500355 eval=0.060 (3567s)
 [mappo 15x15-3p-5f s0] t=16000355 eval=0.081 (3676s)
 [mappo 15x15-3p-5f s0] t=16500335 eval=0.071 (3785s)
+[mappo 15x15-3p-5f s0] resumed at t=15659855

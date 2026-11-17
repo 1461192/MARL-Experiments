@@ -22,3 +22,4 @@
 [macpf 10x10-3p-3f s0] t=950046 eval=0.030 (3187s)
 [macpf 10x10-3p-3f s0] t=1000046 eval=0.024 (3345s)
 [macpf 10x10-3p-3f s0] t=1050046 eval=0.014 (3501s)
+[macpf 10x10-3p-3f s0] resumed at t=987796
