@@ -1,0 +1,4 @@
+[mappo_atd 10x10-3p-3f-2s s0] t=0 eval=0.156 (0s)
+[mappo_atd 10x10-3p-3f-2s s0] t=500114 eval=0.610 (112s)
+[mappo_atd 10x10-3p-3f-2s s0] t=1000043 eval=0.630 (230s)
+[mappo_atd 10x10-3p-3f-2s s0] t=1500071 eval=0.662 (356s)
