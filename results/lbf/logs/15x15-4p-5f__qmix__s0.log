@@ -1,0 +1,5 @@
+[qmix 15x15-4p-5f s0] t=0 eval=0.047 (1s)
+[qmix 15x15-4p-5f s0] t=100000 eval=0.033 (114s)
+[qmix 15x15-4p-5f s0] t=200000 eval=0.049 (229s)
+[qmix 15x15-4p-5f s0] t=250000 eval=0.041 (292s)
+[qmix 15x15-4p-5f s0] t=350000 eval=0.054 (408s)
