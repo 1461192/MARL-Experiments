@@ -22,3 +22,4 @@
 [qplex_l0.4 15x15-4p-5f s0] t=1350000 eval=0.026 (1655s)
 [qplex_l0.4 15x15-4p-5f s0] t=1450000 eval=0.026 (1759s)
 [qplex_l0.4 15x15-4p-5f s0] t=1550000 eval=0.039 (1863s)
+[qplex_l0.4 15x15-4p-5f s0] resumed at t=1494450
