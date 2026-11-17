@@ -107,3 +107,13 @@
 20:39:03 ok  15x15-4p-5f qmix_atd s0 44 min
 20:46:21 ok  15x15-4p-3f qmix_l0.4 s0 40 min
 20:53:15 ok  15x15-4p-5f qmix_l0.4 s0 40 min
+21:19:02 ok  10x10-3p-3f qplex s0 33 min
+21:34:02 ok  10x10-3p-3f-2s qplex s0 41 min
+21:42:06 ok  10x10-3p-3f-2s mappo s0 63 min
+21:43:08 ok  10x10-3p-3f mappo s0 78 min
+21:54:15 ok  15x15-3p-5f qmix s0 35 min
+22:10:57 ok  15x15-3p-5f qmix_atd s0 37 min
+22:16:30 ok  15x15-3p-5f qmix_l0.4 s0 34 min
+22:18:00 ok  10x10-3p-3f qplex_atd s0 35 min
+22:39:33 ok  10x10-3p-3f-2s qplex_atd s0 45 min
+22:42:25 ok  10x10-3p-3f qplex_l0.4 s0 31 min

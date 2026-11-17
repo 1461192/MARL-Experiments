@@ -1,0 +1,4 @@
+[qmix 10x10-3p-3f-2s s0] t=0 eval=0.015 (0s)
+[qmix 10x10-3p-3f-2s s0] t=100016 eval=0.298 (103s)
+[qmix 10x10-3p-3f-2s s0] t=200023 eval=0.222 (207s)
+[qmix 10x10-3p-3f-2s s0] t=300042 eval=0.290 (312s)
