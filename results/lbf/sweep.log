@@ -19,3 +19,10 @@
 194 jobs to run
 00:17:19 ok  15x15-4p-5f qplex_l0.4 s0 11 min
 193 jobs to run
+01:20:34 ok  15x15-3p-5f mappo s0 15 min
+02:01:17 ok  10x10-3p-3f-2s macpf s0 56 min
+02:01:23 ok  10x10-3p-3f macpf s0 56 min
+02:04:27 ok  10x10-3p-3f mappo_atd s0 59 min
+02:34:02 ok  15x15-3p-5f qplex s0 33 min
+02:36:21 ok  15x15-3p-5f qplex_atd s0 35 min
+02:37:10 ok  15x15-3p-5f qplex_l0.4 s0 33 min
