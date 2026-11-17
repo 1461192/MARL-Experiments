@@ -18,3 +18,7 @@
 [qmix 15x15-4p-3f s0] t=1450001 eval=0.017 (1644s)
 [qmix 15x15-4p-3f s0] t=1550001 eval=0.057 (1757s)
 [qmix 15x15-4p-3f s0] t=1650009 eval=0.018 (1870s)
+[qmix 15x15-4p-3f s0] t=1750009 eval=0.034 (1984s)
+[qmix 15x15-4p-3f s0] t=1850009 eval=0.059 (2099s)
+[qmix 15x15-4p-3f s0] t=1950007 eval=0.033 (2211s)
+[qmix 15x15-4p-3f s0] done in 2268s, final eval 0.053, max eval 0.063
