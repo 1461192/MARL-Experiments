@@ -31,3 +31,12 @@
 [mappo_l0.95 8x8-2p-2f-c s0] t=15000022 eval=1.000 (3465s)
 [mappo_l0.95 8x8-2p-2f-c s0] t=15500071 eval=1.000 (3587s)
 [mappo_l0.95 8x8-2p-2f-c s0] t=16000078 eval=1.000 (3711s)
+[mappo_l0.95 8x8-2p-2f-c s0] t=16500082 eval=1.000 (3833s)
+[mappo_l0.95 8x8-2p-2f-c s0] t=17000060 eval=1.000 (3958s)
+[mappo_l0.95 8x8-2p-2f-c s0] t=17500029 eval=1.000 (4082s)
+[mappo_l0.95 8x8-2p-2f-c s0] t=18000045 eval=1.000 (4207s)
+[mappo_l0.95 8x8-2p-2f-c s0] t=18500011 eval=1.000 (4335s)
+[mappo_l0.95 8x8-2p-2f-c s0] t=19000061 eval=1.000 (4464s)
+[mappo_l0.95 8x8-2p-2f-c s0] t=19500020 eval=1.000 (4594s)
+[mappo_l0.95 8x8-2p-2f-c s0] t=20000055 eval=1.000 (4721s)
+[mappo_l0.95 8x8-2p-2f-c s0] done in 4721s, final eval 1.000, max eval 1.000
