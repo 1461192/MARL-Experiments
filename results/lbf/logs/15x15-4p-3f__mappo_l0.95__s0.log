@@ -32,3 +32,11 @@
 [mappo_l0.95 15x15-4p-3f s0] t=15500251 eval=0.871 (4137s)
 [mappo_l0.95 15x15-4p-3f s0] t=16000128 eval=0.938 (4276s)
 [mappo_l0.95 15x15-4p-3f s0] t=16500136 eval=0.895 (4410s)
+[mappo_l0.95 15x15-4p-3f s0] t=17000099 eval=0.896 (4546s)
+[mappo_l0.95 15x15-4p-3f s0] t=17500009 eval=0.885 (4678s)
+[mappo_l0.95 15x15-4p-3f s0] t=18000327 eval=0.943 (4812s)
+[mappo_l0.95 15x15-4p-3f s0] t=18500034 eval=0.942 (4950s)
+[mappo_l0.95 15x15-4p-3f s0] t=19000099 eval=0.914 (5089s)
+[mappo_l0.95 15x15-4p-3f s0] t=19500346 eval=0.901 (5222s)
+[mappo_l0.95 15x15-4p-3f s0] t=20000241 eval=0.904 (5359s)
+[mappo_l0.95 15x15-4p-3f s0] done in 5359s, final eval 0.904, max eval 0.943
