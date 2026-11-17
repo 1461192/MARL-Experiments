@@ -9,3 +9,4 @@
 [qplex_atd 15x15-4p-3f s0] t=450045 eval=0.009 (562s)
 [qplex_atd 15x15-4p-3f s0] t=500045 eval=0.014 (624s)
 [qplex_atd 15x15-4p-3f s0] t=550045 eval=0.056 (689s)
+[qplex_atd 15x15-4p-3f s0] t=600003 eval=0.050 (752s)
