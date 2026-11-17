@@ -4,3 +4,6 @@
 [mappo 15x15-3p-5f s0] t=1500000 eval=0.065 (276s)
 [mappo 15x15-3p-5f s0] t=2000000 eval=0.064 (369s)
 [mappo 15x15-3p-5f s0] resumed at t=1630500
+[mappo 15x15-3p-5f s0] t=2000000 eval=0.064 (392s)
+[mappo 15x15-3p-5f s0] t=2500000 eval=0.059 (512s)
+[mappo 15x15-3p-5f s0] t=3000482 eval=0.060 (639s)
