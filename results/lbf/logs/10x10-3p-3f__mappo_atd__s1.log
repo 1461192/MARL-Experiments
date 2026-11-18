@@ -34,3 +34,11 @@
 [mappo_atd 10x10-3p-3f s1] t=16500138 eval=0.925 (5992s)
 [mappo_atd 10x10-3p-3f s1] t=17000156 eval=0.957 (6182s)
 [mappo_atd 10x10-3p-3f s1] resumed at t=16544446
+[mappo_atd 10x10-3p-3f s1] t=17000156 eval=0.957 (6191s)
+[mappo_atd 10x10-3p-3f s1] t=17500240 eval=0.980 (6395s)
+[mappo_atd 10x10-3p-3f s1] t=18000024 eval=0.970 (6591s)
+[mappo_atd 10x10-3p-3f s1] t=18500042 eval=0.990 (6792s)
+[mappo_atd 10x10-3p-3f s1] t=19000192 eval=0.947 (6992s)
+[mappo_atd 10x10-3p-3f s1] t=19500220 eval=0.964 (7193s)
+[mappo_atd 10x10-3p-3f s1] t=20000045 eval=0.967 (7389s)
+[mappo_atd 10x10-3p-3f s1] done in 7389s, final eval 0.967, max eval 0.997

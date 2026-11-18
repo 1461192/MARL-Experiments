@@ -38,3 +38,7 @@
 [macpf 10x10-3p-3f s1] t=1850047 eval=0.024 (7435s)
 [macpf 10x10-3p-3f s1] t=1900047 eval=0.024 (7622s)
 [macpf 10x10-3p-3f s1] resumed at t=1871447
+[macpf 10x10-3p-3f s1] t=1900047 eval=0.024 (7622s)
+[macpf 10x10-3p-3f s1] t=1950047 eval=0.016 (7804s)
+[macpf 10x10-3p-3f s1] t=2000047 eval=0.018 (7989s)
+[macpf 10x10-3p-3f s1] done in 7989s, final eval 0.018, max eval 0.166
