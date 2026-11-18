@@ -1,0 +1,6 @@
+[macpf 10x10-3p-3f-2s s1] t=0 eval=0.000 (1s)
+[macpf 10x10-3p-3f-2s s1] t=50008 eval=0.043 (193s)
+[macpf 10x10-3p-3f-2s s1] t=100008 eval=0.057 (389s)
+[macpf 10x10-3p-3f-2s s1] t=150006 eval=0.027 (588s)
+[macpf 10x10-3p-3f-2s s1] t=200033 eval=0.017 (793s)
+[macpf 10x10-3p-3f-2s s1] t=250030 eval=0.036 (998s)

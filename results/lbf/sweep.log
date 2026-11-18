@@ -137,3 +137,7 @@
 04:58:42 ok  15x15-4p-5f mappo s1 97 min
 05:01:50 ok  15x15-3p-5f mappo_l0.95 s1 76 min
 05:04:59 ok  15x15-3p-5f mappo_atd s1 90 min
+05:25:33 ok  15x15-4p-5f qplex s1 49 min
+05:51:34 ok  15x15-4p-3f qplex_atd s1 53 min
+05:56:35 ok  15x15-4p-5f qplex_atd s1 55 min
+05:56:53 ok  15x15-4p-3f qplex_l0.4 s1 52 min
