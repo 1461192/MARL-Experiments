@@ -4,3 +4,4 @@
 [mappo_l0.95 8x8-2p-2f-c s1] t=1500055 eval=1.000 (325s)
 [mappo_l0.95 8x8-2p-2f-c s1] t=2000082 eval=0.990 (472s)
 [mappo_l0.95 8x8-2p-2f-c s1] t=2500101 eval=0.975 (618s)
+[mappo_l0.95 8x8-2p-2f-c s1] t=3000187 eval=0.995 (770s)
