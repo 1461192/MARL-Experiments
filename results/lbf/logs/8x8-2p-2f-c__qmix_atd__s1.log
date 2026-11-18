@@ -20,3 +20,13 @@
 [qmix_atd 8x8-2p-2f-c s1] t=1450000 eval=0.995 (1909s)
 [qmix_atd 8x8-2p-2f-c s1] t=1500002 eval=0.990 (2000s)
 [qmix_atd 8x8-2p-2f-c s1] t=1550001 eval=1.000 (2091s)
+[qmix_atd 8x8-2p-2f-c s1] t=1600027 eval=1.000 (2181s)
+[qmix_atd 8x8-2p-2f-c s1] t=1650013 eval=1.000 (2272s)
+[qmix_atd 8x8-2p-2f-c s1] t=1700002 eval=1.000 (2359s)
+[qmix_atd 8x8-2p-2f-c s1] t=1750000 eval=1.000 (2446s)
+[qmix_atd 8x8-2p-2f-c s1] t=1800000 eval=0.995 (2535s)
+[qmix_atd 8x8-2p-2f-c s1] t=1850010 eval=1.000 (2619s)
+[qmix_atd 8x8-2p-2f-c s1] t=1900009 eval=1.000 (2698s)
+[qmix_atd 8x8-2p-2f-c s1] t=1950003 eval=1.000 (2778s)
+[qmix_atd 8x8-2p-2f-c s1] t=2000000 eval=0.990 (2861s)
+[qmix_atd 8x8-2p-2f-c s1] done in 2861s, final eval 0.990, max eval 1.000
