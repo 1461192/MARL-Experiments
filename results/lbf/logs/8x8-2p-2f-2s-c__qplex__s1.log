@@ -15,3 +15,8 @@
 [qplex 8x8-2p-2f-2s-c s1] t=1200010 eval=0.965 (1205s)
 [qplex 8x8-2p-2f-2s-c s1] t=1250001 eval=0.980 (1284s)
 [qplex 8x8-2p-2f-2s-c s1] t=1300032 eval=0.970 (1364s)
+[qplex 8x8-2p-2f-2s-c s1] t=1350030 eval=0.945 (1445s)
+[qplex 8x8-2p-2f-2s-c s1] t=1400005 eval=0.995 (1528s)
+[qplex 8x8-2p-2f-2s-c s1] t=1450014 eval=0.990 (1612s)
+[qplex 8x8-2p-2f-2s-c s1] t=1500006 eval=0.995 (1698s)
+[qplex 8x8-2p-2f-2s-c s1] t=1550014 eval=0.980 (1783s)
