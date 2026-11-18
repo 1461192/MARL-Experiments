@@ -36,3 +36,7 @@
 [mappo_l0.95 15x15-4p-3f s1] t=17500160 eval=0.927 (5778s)
 [mappo_l0.95 15x15-4p-3f s1] t=18000058 eval=0.959 (5958s)
 [mappo_l0.95 15x15-4p-3f s1] t=18500150 eval=0.981 (6137s)
+[mappo_l0.95 15x15-4p-3f s1] t=19000139 eval=0.976 (6313s)
+[mappo_l0.95 15x15-4p-3f s1] t=19500036 eval=0.965 (6492s)
+[mappo_l0.95 15x15-4p-3f s1] t=20000088 eval=0.985 (6674s)
+[mappo_l0.95 15x15-4p-3f s1] done in 6674s, final eval 0.985, max eval 0.985

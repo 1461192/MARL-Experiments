@@ -31,3 +31,12 @@
 [mappo 15x15-4p-3f s1] t=15000315 eval=0.933 (4914s)
 [mappo 15x15-4p-3f s1] t=15500240 eval=0.967 (5092s)
 [mappo 15x15-4p-3f s1] t=16000175 eval=0.952 (5271s)
+[mappo 15x15-4p-3f s1] t=16500264 eval=0.944 (5448s)
+[mappo 15x15-4p-3f s1] t=17000026 eval=0.936 (5629s)
+[mappo 15x15-4p-3f s1] t=17500193 eval=0.917 (5809s)
+[mappo 15x15-4p-3f s1] t=18000118 eval=0.960 (5993s)
+[mappo 15x15-4p-3f s1] t=18500228 eval=0.971 (6177s)
+[mappo 15x15-4p-3f s1] t=19000180 eval=0.930 (6356s)
+[mappo 15x15-4p-3f s1] t=19500235 eval=0.921 (6531s)
+[mappo 15x15-4p-3f s1] t=20000318 eval=0.981 (6709s)
+[mappo 15x15-4p-3f s1] done in 6709s, final eval 0.981, max eval 0.989
