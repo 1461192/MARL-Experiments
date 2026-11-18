@@ -196,3 +196,7 @@
 19:58:59 ok  8x8-2p-2f-c qmix_atd s1 48 min
 20:03:55 ok  8x8-2p-2f-2s-c qmix_atd s1 51 min
 20:35:20 ok  8x8-2p-2f-2s-c qmix_l0.4 s1 46 min
+22:10:14 ok  15x15-4p-3f mappo_atd s2 126 min
+22:26:27 ok  15x15-4p-3f macpf s2 149 min
+22:31:39 ok  15x15-4p-5f macpf s2 153 min
+22:36:57 ok  15x15-4p-5f mappo_atd s2 122 min
