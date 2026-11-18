@@ -26,3 +26,8 @@
 [mappo 15x15-4p-3f s1] t=12500146 eval=0.904 (4046s)
 [mappo 15x15-4p-3f s1] t=13000168 eval=0.975 (4217s)
 [mappo 15x15-4p-3f s1] t=13500208 eval=0.910 (4388s)
+[mappo 15x15-4p-3f s1] t=14000091 eval=0.980 (4562s)
+[mappo 15x15-4p-3f s1] t=14500256 eval=0.934 (4736s)
+[mappo 15x15-4p-3f s1] t=15000315 eval=0.933 (4914s)
+[mappo 15x15-4p-3f s1] t=15500240 eval=0.967 (5092s)
+[mappo 15x15-4p-3f s1] t=16000175 eval=0.952 (5271s)
