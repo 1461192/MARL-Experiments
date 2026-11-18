@@ -14,3 +14,4 @@
 [macpf 15x15-4p-3f s1] t=650021 eval=0.044 (2407s)
 [macpf 15x15-4p-3f s1] t=700047 eval=0.007 (2572s)
 [macpf 15x15-4p-3f s1] resumed at t=739697
+[macpf 15x15-4p-3f s1] t=800003 eval=0.007 (2983s)

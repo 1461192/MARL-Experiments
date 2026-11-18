@@ -15,3 +15,5 @@
 [mappo_atd 15x15-4p-3f s1] t=7000372 eval=0.873 (1883s)
 [mappo_atd 15x15-4p-3f s1] t=7500121 eval=0.973 (2020s)
 [mappo_atd 15x15-4p-3f s1] resumed at t=6714539
+[mappo_atd 15x15-4p-3f s1] t=7000372 eval=0.873 (1915s)
+[mappo_atd 15x15-4p-3f s1] t=7500121 eval=0.973 (2104s)
