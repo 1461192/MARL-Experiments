@@ -20,3 +20,4 @@
 [mappo_atd 10x10-3p-3f-2s s1] t=9500001 eval=0.674 (2810s)
 [mappo_atd 10x10-3p-3f-2s s1] t=10000205 eval=0.698 (2947s)
 [mappo_atd 10x10-3p-3f-2s s1] t=10500210 eval=0.700 (3083s)
+[mappo_atd 10x10-3p-3f-2s s1] resumed at t=10204436
