@@ -15,3 +15,4 @@
 [mappo 8x8-2p-2f-2s-c s1] t=7000080 eval=0.700 (1419s)
 [mappo 8x8-2p-2f-2s-c s1] t=7500247 eval=0.835 (1514s)
 [mappo 8x8-2p-2f-2s-c s1] t=8000415 eval=0.540 (1609s)
+[mappo 8x8-2p-2f-2s-c s1] t=8500100 eval=0.810 (1704s)
