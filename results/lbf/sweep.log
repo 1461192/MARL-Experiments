@@ -151,3 +151,10 @@
 08:54:22 ok  10x10-3p-3f-2s mappo_atd s1 49 min
 08:55:51 ok  15x15-3p-5f qplex_atd s1 43 min
 09:09:13 ok  15x15-3p-5f qplex_l0.4 s1 41 min
+09:45:55 ok  15x15-4p-3f qmix s1 50 min
+10:00:36 ok  15x15-4p-5f qmix s1 51 min
+10:24:52 ok  10x10-3p-3f-2s mappo_l0.95 s1 90 min
+10:38:41 ok  10x10-3p-3f mappo_l0.95 s1 105 min
+10:38:47 ok  15x15-4p-3f qmix_atd s1 53 min
+10:55:06 ok  15x15-4p-5f qmix_atd s1 55 min
+11:14:12 ok  15x15-4p-3f qmix_l0.4 s1 49 min
