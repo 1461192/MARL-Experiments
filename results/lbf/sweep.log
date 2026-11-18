@@ -117,3 +117,11 @@
 22:18:00 ok  10x10-3p-3f qplex_atd s0 35 min
 22:39:33 ok  10x10-3p-3f-2s qplex_atd s0 45 min
 22:42:25 ok  10x10-3p-3f qplex_l0.4 s0 31 min
+22:50:24 ok  10x10-3p-3f qmix s0 32 min
+22:57:17 ok  10x10-3p-3f-2s qplex_l0.4 s0 41 min
+23:17:50 ok  10x10-3p-3f-2s qmix s0 38 min
+23:20:11 ok  10x10-3p-3f qmix_atd s0 38 min
+23:28:47 ok  10x10-3p-3f-2s qmix_atd s0 38 min
+23:31:01 ok  10x10-3p-3f qmix_l0.4 s0 34 min
+23:54:59 ok  10x10-3p-3f-2s qmix_l0.4 s0 37 min
+140 jobs to run
