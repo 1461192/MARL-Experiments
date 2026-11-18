@@ -20,3 +20,13 @@
 [qplex 8x8-2p-2f-2s-c s1] t=1450014 eval=0.990 (1612s)
 [qplex 8x8-2p-2f-2s-c s1] t=1500006 eval=0.995 (1698s)
 [qplex 8x8-2p-2f-2s-c s1] t=1550014 eval=0.980 (1783s)
+[qplex 8x8-2p-2f-2s-c s1] t=1600010 eval=0.995 (1867s)
+[qplex 8x8-2p-2f-2s-c s1] t=1650037 eval=0.985 (1952s)
+[qplex 8x8-2p-2f-2s-c s1] t=1700021 eval=0.980 (2038s)
+[qplex 8x8-2p-2f-2s-c s1] t=1750006 eval=1.000 (2122s)
+[qplex 8x8-2p-2f-2s-c s1] t=1800000 eval=1.000 (2207s)
+[qplex 8x8-2p-2f-2s-c s1] t=1850012 eval=0.990 (2291s)
+[qplex 8x8-2p-2f-2s-c s1] t=1900004 eval=1.000 (2378s)
+[qplex 8x8-2p-2f-2s-c s1] t=1950008 eval=0.985 (2459s)
+[qplex 8x8-2p-2f-2s-c s1] t=2000003 eval=0.990 (2541s)
+[qplex 8x8-2p-2f-2s-c s1] done in 2541s, final eval 0.990, max eval 1.000
