@@ -163,3 +163,12 @@
 12:24:12 ok  10x10-3p-3f mappo s1 105 min
 12:52:56 ok  8x8-2p-2f-c macpf s1 99 min
 13:01:45 ok  10x10-3p-3f qplex s1 42 min
+13:07:54 ok  8x8-2p-2f-2s-c macpf s1 98 min
+13:12:41 ok  10x10-3p-3f-2s qplex s1 48 min
+13:37:01 ok  15x15-3p-5f qmix s1 44 min
+13:47:50 ok  15x15-3p-5f qmix_atd s1 46 min
+13:51:37 ok  15x15-3p-5f qmix_l0.4 s1 44 min
+13:56:19 ok  10x10-3p-3f qplex_atd s1 44 min
+14:29:26 ok  10x10-3p-3f qplex_l0.4 s1 42 min
+14:33:10 ok  10x10-3p-3f-2s qplex_atd s1 56 min
+14:45:09 ok  10x10-3p-3f-2s qplex_l0.4 s1 54 min

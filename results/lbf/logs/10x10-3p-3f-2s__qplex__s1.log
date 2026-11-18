@@ -29,3 +29,9 @@
 [qplex 10x10-3p-3f-2s s1] t=1650007 eval=0.904 (2296s)
 [qplex 10x10-3p-3f-2s s1] t=1700006 eval=0.891 (2389s)
 [qplex 10x10-3p-3f-2s s1] t=1750026 eval=0.902 (2480s)
+[qplex 10x10-3p-3f-2s s1] t=1800039 eval=0.911 (2565s)
+[qplex 10x10-3p-3f-2s s1] t=1850026 eval=0.872 (2653s)
+[qplex 10x10-3p-3f-2s s1] t=1900036 eval=0.944 (2736s)
+[qplex 10x10-3p-3f-2s s1] t=1950009 eval=0.889 (2821s)
+[qplex 10x10-3p-3f-2s s1] t=2000000 eval=0.925 (2906s)
+[qplex 10x10-3p-3f-2s s1] done in 2906s, final eval 0.925, max eval 0.944
