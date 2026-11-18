@@ -18,3 +18,6 @@
 [macpf 15x15-4p-5f s2] t=850000 eval=0.093 (3896s)
 [macpf 15x15-4p-5f s2] t=900039 eval=0.084 (4132s)
 [macpf 15x15-4p-5f s2] t=950039 eval=0.105 (4362s)
+[macpf 15x15-4p-5f s2] t=1000039 eval=0.133 (4591s)
+[macpf 15x15-4p-5f s2] t=1050039 eval=0.137 (4822s)
+[macpf 15x15-4p-5f s2] t=1100039 eval=0.119 (5050s)
