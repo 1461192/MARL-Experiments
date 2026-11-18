@@ -35,3 +35,8 @@
 [mappo 10x10-3p-3f s1] t=17000033 eval=0.958 (5321s)
 [mappo 10x10-3p-3f s1] t=17500149 eval=0.954 (5495s)
 [mappo 10x10-3p-3f s1] t=18000171 eval=0.978 (5657s)
+[mappo 10x10-3p-3f s1] t=18500005 eval=0.943 (5828s)
+[mappo 10x10-3p-3f s1] t=19000068 eval=0.984 (5989s)
+[mappo 10x10-3p-3f s1] t=19500124 eval=0.951 (6156s)
+[mappo 10x10-3p-3f s1] t=20000150 eval=0.991 (6321s)
+[mappo 10x10-3p-3f s1] done in 6321s, final eval 0.991, max eval 0.996

@@ -1,0 +1,4 @@
+[qmix_atd 15x15-3p-5f s1] t=0 eval=0.003 (1s)
+[qmix_atd 15x15-3p-5f s1] t=50000 eval=0.019 (73s)
+[qmix_atd 15x15-3p-5f s1] t=100000 eval=0.024 (148s)
+[qmix_atd 15x15-3p-5f s1] t=150000 eval=0.023 (217s)
