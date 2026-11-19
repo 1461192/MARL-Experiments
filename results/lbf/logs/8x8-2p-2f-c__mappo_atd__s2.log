@@ -36,3 +36,7 @@
 [mappo_atd 8x8-2p-2f-c s2] t=17500015 eval=1.000 (7084s)
 [mappo_atd 8x8-2p-2f-c s2] t=18000099 eval=1.000 (7328s)
 [mappo_atd 8x8-2p-2f-c s2] t=18500045 eval=1.000 (7558s)
+[mappo_atd 8x8-2p-2f-c s2] t=19000068 eval=1.000 (7784s)
+[mappo_atd 8x8-2p-2f-c s2] t=19500018 eval=1.000 (8019s)
+[mappo_atd 8x8-2p-2f-c s2] t=20000068 eval=1.000 (8255s)
+[mappo_atd 8x8-2p-2f-c s2] done in 8255s, final eval 1.000, max eval 1.000
