@@ -8,3 +8,4 @@
 [qmix 8x8-2p-2f-c s2] t=700049 eval=0.130 (731s)
 [qmix 8x8-2p-2f-c s2] t=800027 eval=0.210 (828s)
 [qmix 8x8-2p-2f-c s2] t=900004 eval=0.370 (928s)
+[qmix 8x8-2p-2f-c s2] t=1000031 eval=0.420 (1026s)
