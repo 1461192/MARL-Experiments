@@ -258,3 +258,12 @@
 15:19:34 ok  8x8-2p-2f-c qplex s2 52 min
 15:33:39 ok  8x8-2p-2f-2s-c qplex s2 53 min
 15:42:21 ok  8x8-2p-2f-c qplex_atd s2 61 min
+16:04:58 ok  8x8-2p-2f-2s-c qplex_atd s2 59 min
+16:13:34 ok  8x8-2p-2f-c qplex_l0.4 s2 54 min
+16:15:55 ok  8x8-2p-2f-c qmix s2 34 min
+16:26:44 ok  8x8-2p-2f-2s-c qplex_l0.4 s2 53 min
+16:46:49 ok  8x8-2p-2f-2s-c qmix s2 42 min
+17:10:00 ok  8x8-2p-2f-c qmix_atd s2 56 min
+17:13:15 ok  8x8-2p-2f-2s-c qmix_atd s2 57 min
+17:18:16 ok  8x8-2p-2f-c qmix_l0.4 s2 52 min
+17:37:53 ok  8x8-2p-2f-2s-c qmix_l0.4 s2 51 min
