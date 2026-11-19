@@ -23,6 +23,24 @@ vdn_lab/
 examples/       ten runnable examples      tests/   pytest suite
 ```
 
+## Level-Based Foraging study (`lbf_bench/`)
+
+A separate package, [`lbf_bench`](lbf_bench/README.md), runs QMIX, QPLEX, MAPPO, MACPF, the adaptive TD(λ)
+variants of QMIX, QPLEX and MAPPO, and fixed-λ controls on the seven LBF tasks of Papoudakis et al.
+(NeurIPS 2021 Datasets & Benchmarks, arXiv:2006.07869v4). Budgets are 2M steps for the off-policy
+methods and 20M for the on-policy ones; there are 3 seeds; results are in `results/lbf/`.
+
+Headline findings (details, tables and figures in [`lbf_bench/README.md`](lbf_bench/README.md#results-3-seeds-all-210-runs)):
+
+* **MAPPO** reproduces the paper's LBF numbers on all seven tasks.
+* **QMIX** matches the paper on four tasks. It is lower on `8x8-2p-2f-c`, `10x10-3p-3f` and `15x15-4p-5f`.
+* **QPLEX**, with QMIX's training settings, is the best value-based method on three of the four small maps. It fails on
+  the 15×15 maps, as QMIX does.
+* **MACPF**, untuned, with its SMAC settings, does not learn LBF.
+* **Adaptive λ stays at about 0.5 throughout.** The ATD estimator cannot tell recent from old data
+  (accuracy about 0.5). ATD's gains over 1-step QMIX/QPLEX are matched by a fixed λ = 0.4. For MAPPO,
+  ATD, λ = 0.95 and the base are indistinguishable.
+
 ## Install / run
 
 ```bash

@@ -131,3 +131,120 @@ Base QMIX, QPLEX and MAPPO use 1-step or 5-step targets, so ATD changes two thin
 ## Grid search
 
 None. Every value comes from one of the papers above.
+
+## Results (3 seeds, all 210 runs)
+
+All tables are in [`results/lbf/summary.md`](../results/lbf/summary.md) and the figures in
+[`results/lbf/figures/`](../results/lbf/figures/). Regenerate them with
+`python -m lbf_bench.analysis --root results/lbf`. Values are mean ± 95% CI over seeds 0–2; **bold** is
+the best in the row.
+
+### Main algorithms: maximum returns, compared with the benchmark paper
+
+| task | QMIX | QMIX (paper) | QPLEX | MACPF | MAPPO | MAPPO (paper) |
+|---|---|---|---|---|---|---|
+| 8x8-2p-2f-c | 0.48 ± 0.05 | 0.96 ± 0.07 | **1.00 ± 0.00** | 0.23 ± 0.38 | **1.00 ± 0.00** | 1.00 ± 0.00 |
+| 8x8-2p-2f-2s-c | 0.99 ± 0.01 | 1.00 ± 0.00 | **1.00 ± 0.00** | 0.01 ± 0.06 | 0.86 ± 0.12 | 0.85 ± 0.06 |
+| 10x10-3p-3f | 0.23 ± 0.10 | 0.84 ± 0.08 | 0.18 ± 0.14 | 0.10 ± 0.21 | **0.99 ± 0.02** | 0.99 ± 0.01 |
+| 10x10-3p-3f-2s | 0.88 ± 0.06 | 0.90 ± 0.01 | **0.92 ± 0.03** | 0.09 ± 0.16 | 0.74 ± 0.14 | 0.72 ± 0.03 |
+| 15x15-3p-5f | 0.06 ± 0.02 | 0.09 ± 0.04 | 0.02 ± 0.02 | 0.04 ± 0.04 | **0.78 ± 0.05** | 0.77 ± 0.02 |
+| 15x15-4p-3f | 0.10 ± 0.06 | 0.15 ± 0.06 | 0.05 ± 0.06 | 0.04 ± 0.10 | **0.97 ± 0.01** | 0.96 ± 0.02 |
+| 15x15-4p-5f | 0.08 ± 0.03 | 0.25 ± 0.09 | 0.04 ± 0.05 | 0.08 ± 0.22 | **0.83 ± 0.13** | 0.70 ± 0.25 |
+
+The paper columns are from its table 3 (LBF, parameter sharing, 5 seeds). Bold covers this study's
+columns only.
+
+![value-based learning curves](../results/lbf/figures/curves_value_based.png)
+
+* **MAPPO reproduces the paper.** Its confidence intervals overlap the paper's on all seven tasks; on
+  `15x15-4p-5f` it is somewhat higher (0.83 vs. 0.70 ± 0.25).
+* **QMIX matches the paper on four tasks and is lower on three.** It matches on `8x8-2p-2f-2s-c`,
+  `10x10-3p-3f-2s`, `15x15-3p-5f` and `15x15-4p-3f`. It is lower on:
+  * `8x8-2p-2f-c`: 0.48 vs. 0.96. All three seeds plateau near 0.5, i.e. one of the two items, so this
+    is not seed noise.
+  * `10x10-3p-3f`: 0.23 vs. 0.84.
+  * `15x15-4p-5f`: 0.08 vs. 0.25.
+
+  The hyper-parameters are the paper's table 28. The cause of the gap was not found. The same QMIX
+  with λ-returns (λ = 0.4, or ATD) reaches 1.00 and 0.54–0.77 on the first two of these tasks, which
+  points at the 1-step target propagating the sparse reward too slowly. The paper's code may differ from
+  this implementation in a detail neither the paper nor EPyMARL's defaults pin down. The paper's own
+  QMIX result on `8x8-2p-2f-c` is marked as high-variance.
+* **QPLEX is the best value-based method on three of the four small tasks** (1.00, 1.00 and 0.92).
+  On `10x10-3p-3f` both fail: QPLEX 0.18, QMIX 0.23. Like QMIX, it fails on the three 15×15 tasks. It uses QMIX's LBF
+  training settings, so the difference is the mixer alone. The benchmark has no QPLEX numbers to compare
+  with.
+* **MACPF does not learn LBF** with its paper's (SMAC) hyper-parameters; its best task is 0.23 ± 0.38
+  on `8x8-2p-2f-c`. It was not tuned (no grid search), so this says nothing about MACPF with LBF-tuned
+  settings.
+
+### Adaptive TD(λ) vs fixed λ: maximum returns
+
+| task | QMIX | QMIX-ATD | QMIX λ=0.4 | QPLEX | QPLEX-ATD | QPLEX λ=0.4 | MAPPO | MAPPO-ATD | MAPPO λ=0.95 |
+|---|---|---|---|---|---|---|---|---|---|
+| 8x8-2p-2f-c | 0.48 ± 0.05 | **1.00 ± 0.00** | **1.00 ± 0.00** | **1.00 ± 0.00** | **1.00 ± 0.00** | **1.00 ± 0.00** | **1.00 ± 0.00** | **1.00 ± 0.00** | **1.00 ± 0.00** |
+| 8x8-2p-2f-2s-c | 0.99 ± 0.01 | 1.00 ± 0.01 | **1.00 ± 0.00** | **1.00 ± 0.00** | **1.00 ± 0.00** | **1.00 ± 0.00** | 0.86 ± 0.12 | 0.87 ± 0.16 | **0.88 ± 0.04** |
+| 10x10-3p-3f | 0.23 ± 0.10 | **0.77 ± 0.30** | 0.54 ± 0.48 | **0.18 ± 0.14** | 0.17 ± 0.13 | 0.06 ± 0.11 | **0.99 ± 0.02** | 0.98 ± 0.02 | 0.98 ± 0.02 |
+| 10x10-3p-3f-2s | **0.88 ± 0.06** | 0.82 ± 0.09 | 0.87 ± 0.11 | 0.92 ± 0.03 | **0.93 ± 0.02** | 0.92 ± 0.03 | 0.74 ± 0.14 | 0.74 ± 0.07 | **0.78 ± 0.08** |
+| 15x15-3p-5f | 0.06 ± 0.02 | 0.07 ± 0.03 | **0.07 ± 0.03** | 0.02 ± 0.02 | 0.02 ± 0.04 | **0.03 ± 0.08** | 0.78 ± 0.05 | 0.69 ± 0.16 | **0.78 ± 0.12** |
+| 15x15-4p-3f | 0.10 ± 0.06 | **0.13 ± 0.02** | 0.11 ± 0.02 | 0.05 ± 0.06 | 0.04 ± 0.05 | **0.05 ± 0.11** | **0.97 ± 0.01** | 0.96 ± 0.06 | 0.94 ± 0.11 |
+| 15x15-4p-5f | 0.08 ± 0.03 | 0.12 ± 0.08 | **0.12 ± 0.07** | 0.04 ± 0.05 | **0.05 ± 0.06** | 0.04 ± 0.08 | **0.83 ± 0.13** | 0.78 ± 0.15 | 0.76 ± 0.21 |
+
+Bold is the best within each base algorithm's three columns. Average returns are in `summary.md`.
+There, QMIX-ATD and QMIX λ = 0.4 are well above QMIX on the two `8x8` tasks and `10x10-3p-3f` (e.g.
+0.57 and 0.52 vs. 0.24 on `8x8-2p-2f-c`). QPLEX-ATD and QPLEX λ = 0.4 are above QPLEX on `8x8-2p-2f-2s-c`
+and `10x10-3p-3f-2s` (0.81 / 0.79 vs. 0.67 and 0.73 / 0.72 vs. 0.62).
+
+| QMIX | QPLEX | MAPPO |
+|---|---|---|
+| ![](../results/lbf/figures/curves_qmix_atd.png) | ![](../results/lbf/figures/curves_qplex_atd.png) | ![](../results/lbf/figures/curves_mappo_atd.png) |
+
+### λ over time
+
+![adaptive lambda over training](../results/lbf/figures/lambda_over_time.png)
+
+![ATD estimator accuracy](../results/lbf/figures/atd_estimator_accuracy.png)
+
+| task | QMIX-ATD early / mid / late | QPLEX-ATD early / mid / late | MAPPO-ATD early / mid / late |
+|---|---|---|---|
+| all seven tasks | 0.50 / 0.50 / 0.50 | 0.48–0.50 / 0.49–0.50 / 0.49–0.50 | 0.50 / 0.50 / 0.50 |
+
+**The adaptive λ stays at about 0.5 on every task and algorithm.** The estimator's job is to tell
+D_on from D_off, and its accuracy on that hovers at chance:
+* QMIX-ATD: about 0.5, with brief excursions to 0.6.
+* QPLEX-ATD: up to 0.7 early in training, then back to about 0.5.
+* MAPPO-ATD: exactly 0.5 after the first few hundred thousand steps. The estimator's output collapses
+  to a constant, so λ is 0.500 everywhere.
+
+ATD sets λ = sigmoid(ω), so a chance-level estimator gives λ ≈ 0.5.
+
+**What this means for the comparison.** In practice ATD here is a λ-return learner with λ ≈ 0.5, and it
+behaves like the fixed-λ controls:
+* **QMIX and QPLEX.** The ATD gains over 1-step QMIX/QPLEX are matched by the fixed λ = 0.4 controls,
+  within overlapping CIs on every task. The benefit comes from using λ-returns at all, not from adapting
+  λ per state-action pair.
+* **MAPPO.** The critic already uses 5-step returns, and ATD, λ = 0.95 and the base are statistically
+  indistinguishable on all tasks. MAPPO-ATD is slower on `15x15-3p-5f`; there one seed lags for most of
+  training (mean 0.69 vs. 0.78, CIs overlap).
+
+Whether the estimator separates D_on from D_off better on other domains, or with settings other than the
+ATD paper's table 3 values used here, was not tested.
+
+### Deviations and caveats
+
+* 3 seeds instead of the paper's 5, so the CIs are wide. Several differences above are within noise.
+* lbforaging v2.0.0 with v1's item-level rule restored (see "Item levels as in lbforaging v1").
+* QPLEX uses QMIX's LBF training settings (its own settings never learned on LBF; see above).
+* The maximum return is the best step's own 100-episode evaluation. The paper re-evaluates saved models.
+* No hyper-parameter search for any algorithm.
+* Wall time per run on one CPU core:
+
+  | algorithm | minutes per run |
+  |---|---|
+  | QMIX | 41 |
+  | QPLEX | 44 |
+  | ATD variants of QMIX and QPLEX | 48–49 |
+  | λ-controls of QMIX and QPLEX | 44–46 |
+  | MAPPO | 85–87 |
+  | MAPPO-ATD | 103 |
+  | MACPF | 119 |
