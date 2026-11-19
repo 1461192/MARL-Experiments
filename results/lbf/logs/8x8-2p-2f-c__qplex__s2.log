@@ -25,3 +25,8 @@
 [qplex 8x8-2p-2f-c s2] t=1700007 eval=1.000 (2561s)
 [qplex 8x8-2p-2f-c s2] t=1750013 eval=1.000 (2660s)
 [qplex 8x8-2p-2f-c s2] t=1800005 eval=1.000 (2750s)
+[qplex 8x8-2p-2f-c s2] t=1850014 eval=1.000 (2841s)
+[qplex 8x8-2p-2f-c s2] t=1900011 eval=1.000 (2941s)
+[qplex 8x8-2p-2f-c s2] t=1950036 eval=1.000 (3039s)
+[qplex 8x8-2p-2f-c s2] t=2000010 eval=1.000 (3130s)
+[qplex 8x8-2p-2f-c s2] done in 3130s, final eval 1.000, max eval 1.000
