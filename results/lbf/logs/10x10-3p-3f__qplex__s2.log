@@ -30,3 +30,7 @@
 [qplex 10x10-3p-3f s2] t=1450022 eval=0.075 (1874s)
 [qplex 10x10-3p-3f s2] t=1550017 eval=0.080 (1996s)
 [qplex 10x10-3p-3f s2] t=1600017 eval=0.077 (2059s)
+[qplex 10x10-3p-3f s2] t=1650014 eval=0.081 (2123s)
+[qplex 10x10-3p-3f s2] t=1700001 eval=0.056 (2189s)
+[qplex 10x10-3p-3f s2] t=1750020 eval=0.066 (2255s)
+[qplex 10x10-3p-3f s2] t=1800008 eval=0.084 (2324s)

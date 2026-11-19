@@ -29,3 +29,5 @@
 [macpf 8x8-2p-2f-2s-c s2] t=1400000 eval=0.000 (4183s)
 [macpf 8x8-2p-2f-2s-c s2] t=1450000 eval=0.000 (4335s)
 [macpf 8x8-2p-2f-2s-c s2] t=1500000 eval=0.000 (4485s)
+[macpf 8x8-2p-2f-2s-c s2] t=1550000 eval=0.000 (4635s)
+[macpf 8x8-2p-2f-2s-c s2] t=1600000 eval=0.000 (4795s)
