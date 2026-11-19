@@ -22,3 +22,4 @@
 [mappo_l0.95 15x15-3p-5f s2] t=10500199 eval=0.682 (2306s)
 [mappo_l0.95 15x15-3p-5f s2] t=11000067 eval=0.604 (2410s)
 [mappo_l0.95 15x15-3p-5f s2] t=11500029 eval=0.632 (2513s)
+[mappo_l0.95 15x15-3p-5f s2] resumed at t=10960249

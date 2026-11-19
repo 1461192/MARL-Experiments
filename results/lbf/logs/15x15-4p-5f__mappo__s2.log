@@ -20,3 +20,4 @@
 [mappo 15x15-4p-5f s2] t=9500134 eval=0.585 (2707s)
 [mappo 15x15-4p-5f s2] t=10000168 eval=0.745 (2839s)
 [mappo 15x15-4p-5f s2] t=10500432 eval=0.757 (2971s)
+[mappo 15x15-4p-5f s2] resumed at t=10618310
