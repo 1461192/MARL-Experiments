@@ -30,3 +30,13 @@
 [macpf 10x10-3p-3f s2] t=1450044 eval=0.002 (5616s)
 [macpf 10x10-3p-3f s2] t=1500044 eval=0.000 (5810s)
 [macpf 10x10-3p-3f s2] t=1550044 eval=0.000 (5999s)
+[macpf 10x10-3p-3f s2] t=1600044 eval=0.000 (6192s)
+[macpf 10x10-3p-3f s2] t=1650044 eval=0.000 (6387s)
+[macpf 10x10-3p-3f s2] t=1700044 eval=0.005 (6582s)
+[macpf 10x10-3p-3f s2] t=1750044 eval=0.000 (6773s)
+[macpf 10x10-3p-3f s2] t=1800044 eval=0.000 (6965s)
+[macpf 10x10-3p-3f s2] t=1850044 eval=0.000 (7157s)
+[macpf 10x10-3p-3f s2] t=1900044 eval=0.000 (7347s)
+[macpf 10x10-3p-3f s2] t=1950044 eval=0.004 (7535s)
+[macpf 10x10-3p-3f s2] t=2000044 eval=0.005 (7728s)
+[macpf 10x10-3p-3f s2] done in 7728s, final eval 0.005, max eval 0.047
