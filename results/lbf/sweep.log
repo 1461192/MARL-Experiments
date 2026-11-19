@@ -241,3 +241,5 @@
 10:22:01 ok  15x15-3p-5f qmix_l0.4 s2 45 min
 10:31:25 ok  10x10-3p-3f qplex_atd s2 45 min
 10:54:54 ok  10x10-3p-3f qplex_l0.4 s2 44 min
+11:07:27 ok  10x10-3p-3f-2s qplex_atd s2 61 min
+11:19:05 ok  10x10-3p-3f-2s qplex_l0.4 s2 57 min

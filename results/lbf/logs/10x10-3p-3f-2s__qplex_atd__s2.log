@@ -34,3 +34,9 @@
 [qplex_atd 10x10-3p-3f-2s s2] t=1650017 eval=0.916 (2923s)
 [qplex_atd 10x10-3p-3f-2s s2] t=1700020 eval=0.926 (3029s)
 [qplex_atd 10x10-3p-3f-2s s2] t=1750023 eval=0.926 (3137s)
+[qplex_atd 10x10-3p-3f-2s s2] t=1800000 eval=0.924 (3242s)
+[qplex_atd 10x10-3p-3f-2s s2] t=1850031 eval=0.916 (3352s)
+[qplex_atd 10x10-3p-3f-2s s2] t=1900001 eval=0.930 (3462s)
+[qplex_atd 10x10-3p-3f-2s s2] t=1950015 eval=0.854 (3572s)
+[qplex_atd 10x10-3p-3f-2s s2] t=2000004 eval=0.915 (3682s)
+[qplex_atd 10x10-3p-3f-2s s2] done in 3682s, final eval 0.915, max eval 0.930
