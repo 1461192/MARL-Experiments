@@ -18,3 +18,8 @@
 [qplex 15x15-4p-3f s2] t=1100005 eval=0.049 (1349s)
 [qplex 15x15-4p-3f s2] t=1200005 eval=0.011 (1461s)
 [qplex 15x15-4p-3f s2] t=1300005 eval=0.028 (1572s)
+[qplex 15x15-4p-3f s2] t=1400005 eval=0.030 (1679s)
+[qplex 15x15-4p-3f s2] t=1500005 eval=0.070 (1785s)
+[qplex 15x15-4p-3f s2] t=1600027 eval=0.044 (1890s)
+[qplex 15x15-4p-3f s2] t=1700027 eval=0.049 (1993s)
+[qplex 15x15-4p-3f s2] t=1800034 eval=0.062 (2096s)
