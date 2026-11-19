@@ -222,3 +222,9 @@
 05:29:33 ok  15x15-3p-5f qplex s2 44 min
 05:30:45 ok  15x15-3p-5f qplex_l0.4 s2 44 min
 05:32:28 ok  15x15-3p-5f qplex_atd s2 46 min
+06:21:43 ok  15x15-4p-3f qmix s2 51 min
+06:24:37 ok  15x15-4p-5f qmix s2 52 min
+06:53:58 ok  10x10-3p-3f-2s mappo_l0.95 s2 84 min
+07:05:57 ok  10x10-3p-3f mappo_l0.95 s2 105 min
+07:15:18 ok  15x15-4p-3f qmix_atd s2 54 min
+07:19:49 ok  15x15-4p-5f qmix_atd s2 55 min
