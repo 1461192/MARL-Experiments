@@ -31,3 +31,12 @@
 [macpf 8x8-2p-2f-2s-c s2] t=1500000 eval=0.000 (4485s)
 [macpf 8x8-2p-2f-2s-c s2] t=1550000 eval=0.000 (4635s)
 [macpf 8x8-2p-2f-2s-c s2] t=1600000 eval=0.000 (4795s)
+[macpf 8x8-2p-2f-2s-c s2] t=1650000 eval=0.000 (4949s)
+[macpf 8x8-2p-2f-2s-c s2] t=1700000 eval=0.000 (5099s)
+[macpf 8x8-2p-2f-2s-c s2] t=1750000 eval=0.000 (5251s)
+[macpf 8x8-2p-2f-2s-c s2] t=1800000 eval=0.010 (5403s)
+[macpf 8x8-2p-2f-2s-c s2] t=1850000 eval=0.000 (5555s)
+[macpf 8x8-2p-2f-2s-c s2] t=1900000 eval=0.010 (5702s)
+[macpf 8x8-2p-2f-2s-c s2] t=1950000 eval=0.000 (5852s)
+[macpf 8x8-2p-2f-2s-c s2] t=2000000 eval=0.045 (6001s)
+[macpf 8x8-2p-2f-2s-c s2] done in 6001s, final eval 0.045, max eval 0.045
