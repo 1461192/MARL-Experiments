@@ -34,3 +34,9 @@
 [qmix_atd 10x10-3p-3f s2] t=1650026 eval=0.640 (2532s)
 [qmix_atd 10x10-3p-3f s2] t=1700014 eval=0.729 (2633s)
 [qmix_atd 10x10-3p-3f s2] t=1750011 eval=0.678 (2727s)
+[qmix_atd 10x10-3p-3f s2] t=1800033 eval=0.710 (2823s)
+[qmix_atd 10x10-3p-3f s2] t=1850023 eval=0.772 (2916s)
+[qmix_atd 10x10-3p-3f s2] t=1900027 eval=0.758 (3017s)
+[qmix_atd 10x10-3p-3f s2] t=1950005 eval=0.727 (3122s)
+[qmix_atd 10x10-3p-3f s2] t=2000005 eval=0.825 (3225s)
+[qmix_atd 10x10-3p-3f s2] done in 3225s, final eval 0.825, max eval 0.825
