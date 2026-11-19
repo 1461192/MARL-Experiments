@@ -24,3 +24,8 @@
 [qplex 15x15-4p-3f s2] t=1700027 eval=0.049 (1993s)
 [qplex 15x15-4p-3f s2] t=1800034 eval=0.062 (2096s)
 [qplex 15x15-4p-3f s2] resumed at t=1808034
+[qplex 15x15-4p-3f s2] t=1850034 eval=0.042 (2168s)
+[qplex 15x15-4p-3f s2] t=1900034 eval=0.043 (2239s)
+[qplex 15x15-4p-3f s2] t=1950034 eval=0.035 (2311s)
+[qplex 15x15-4p-3f s2] t=2000034 eval=0.080 (2381s)
+[qplex 15x15-4p-3f s2] done in 2381s, final eval 0.080, max eval 0.081
