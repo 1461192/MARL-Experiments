@@ -1,0 +1,216 @@
+% =====================================================================
+% Appendix: hyper-parameters and their sources. Needs booktabs, tabularx.
+% =====================================================================
+\section{Hyper-parameters and their sources}
+\label{app:hyper}
+
+\paragraph{Rule for choosing values.} We applied a fixed order of precedence:
+\begin{enumerate}
+  \item The benchmark paper of Papoudakis et al.~\citep{test} (arXiv:2006.07869v4).
+  \item Otherwise, the algorithm's own paper.
+  \item Otherwise, the authors' public code.
+  \item Only then our own judgment, marked \textbf{(ours)} below.
+\end{enumerate}
+No grid search was performed for any algorithm.
+
+\paragraph{Source keys used in the tables.}
+\begin{itemize}
+  \item \textbf{[B]} Papoudakis et al.~\citep{test}, v4: Sec.~4 for the protocol, Appendix~I for
+        the LBF values selected by their grid search with parameter sharing (Table~28 for QMIX,
+        Table~24 for MAPPO).
+  \item \textbf{[E]} EPyMARL, the code released with [B], for structural details [B] does not
+        state.
+  \item \textbf{[Q]} QPLEX paper~\citep{wang2021qplex}.
+  \item \textbf{[M]} MACPF paper~\citep{macpf}, Appendices C and E.
+  \item \textbf{[Mc]} MACPF authors' PyMARL-based code (\texttt{dfop.yaml}).
+  \item \textbf{[A]} ATD paper~\citep{deng2026adaptive}, Sec.~4, Table~3, Algorithm~1.
+  \item \textbf{[Y]} MAPPO paper~\citep{yu2022mappo}.
+\end{itemize}
+
+% ---------------------------------------------------------------------
+\subsection{Environment and protocol (all algorithms)}
+
+\begin{table}[H]
+\centering\small
+\begin{tabularx}{\textwidth}{l X l}
+\toprule
+Setting & Value & Source \\
+\midrule
+Environment & lbforaging 2.0.0 (\texttt{semitable/lb-foraging}), with version 1's item-level rule restored (below) & [B] Tab.~4 \\
+Tasks & 8x8-2p-2f-c, 8x8-2p-2f-2s-c, 10x10-3p-3f, 10x10-3p-3f-2s, 15x15-3p-5f, 15x15-4p-3f, 15x15-4p-5f & [B] Sec.~3.4 \\
+Episode limit & 50 steps & [B] App.~A \\
+Reward & common reward = sum of agents' rewards; an episode collecting all items returns 1 & [B], [E] \\
+Observations & lbforaging feature vector + one-hot agent id; global state = concatenated observations & [E] \\
+Termination & episode terminates when all items are collected, is truncated at the limit; targets bootstrap only on truncation & (ours) \\
+Training budget & 2M env.\ steps (QMIX, QPLEX, MACPF and their variants); 20M (MAPPO and variants) & [B] Sec.~4.1 \\
+Evaluation & 41 evaluations at equal intervals, 100 episodes each & [B] Sec.~4.3 \\
+Seeds & 0, 1, 2 (benchmark: 5) & (ours; compute budget) \\
+Parameter sharing & yes, with one-hot agent id & [B] \\
+Discount $\gamma$ & 0.99 & [B], [E] \\
+Gradient-norm clip & 10 & [B], [E] \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{Item levels.} The benchmark ran lbforaging~1.0.x. Let $S$ be the sum of the three
+lowest agent levels.
+\begin{itemize}
+  \item Version~1 draws a non-cooperative item's level from $\{1,\dots,S-1\}$
+        (\texttt{randint(1,S)}).
+  \item Version~2.0.0 draws it from $\{1,\dots,S\}$. With three agents, this raises the share of
+        items only all agents together can load from about 2\% to about 25\%.
+  \item Cooperative items have level $S$ in both versions, so the two \texttt{-c} tasks are
+        unaffected.
+\end{itemize}
+We restore version~1's rule. Our first seed under version~2 was far below the benchmark on the
+non-cooperative tasks: MAPPO scored 0.12 vs.\ 0.77 on 15x15-3p-5f. Those runs are excluded.
+
+% ---------------------------------------------------------------------
+\subsection{QMIX and QPLEX}
+
+\begin{table}[H]
+\centering\small
+\begin{tabularx}{\textwidth}{l X l}
+\toprule
+Hyper-parameter & Value & Source \\
+\midrule
+Agent network & FC(64) $\to$ GRU(64) $\to$ FC($|\mathcal{A}|$) & [B] Tab.~28 \\
+Optimiser, learning rate & Adam, $3\times10^{-4}$ & [B] Tab.~28 \\
+Reward standardisation & yes & [B] Tab.~28 \\
+Exploration & $\epsilon$-greedy, $1\to0.05$ linearly over 200k steps & [B] Tab.~28 \\
+Evaluation policy & $\epsilon$-greedy with $\epsilon=0.05$ & [B] Tab.~28 \\
+Target network & soft update, $\tau=0.01$ per gradient step & [B] Tab.~28 \\
+Replay buffer & 5000 episodes & [B], [E] \\
+Batch & 32 episodes; 1 gradient step per collected episode & [E] \\
+TD target & 1-step, Double-Q, MSE loss & [E] \\
+QMIX mixer & hypernetworks, embedding 32, hypernetwork hidden 64 (2 layers) & [E] \\
+QPLEX mixer & duplex dueling; transformation $w_i(s)Q_i+b_i(s)$ (eq.~7); 1-layer $w,b,\lambda,\phi,\upsilon$ networks; 4 attention heads; stop-gradient on $A_i$ & [Q] Tab.~2 (SMAC) \\
+QPLEX training settings & identical to QMIX above & see note \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{QPLEX note.} The benchmark does not include QPLEX, so its mixer comes from its own paper.
+QPLEX's own training settings ([Q], App.~B.2) are the PyMARL defaults:
+\begin{itemize}
+  \item $\epsilon$ annealed over 50k steps;
+  \item RMSprop with learning rate $5\times10^{-4}$;
+  \item two updates per episode;
+  \item a hard target update every 200 episodes.
+\end{itemize}
+With these settings it never rose above a return of 0 on LBF: 0.00 after 700k steps on
+8x8-2p-2f-c, where QMIX had 0.42 by 1M. By the project's decision, QPLEX therefore uses QMIX's
+benchmark-tuned LBF settings, so QMIX and QPLEX differ only in the mixer.
+
+% ---------------------------------------------------------------------
+\subsection{MAPPO}
+
+\begin{table}[H]
+\centering\small
+\begin{tabularx}{\textwidth}{l X l}
+\toprule
+Hyper-parameter & Value & Source \\
+\midrule
+Actor and critic networks & FC(128) $\to$ FC(128) $\to$ FC (no recurrence) & [B] Tab.~24 \\
+Optimiser, learning rate & Adam, $3\times10^{-4}$ (actor and critic) & [B] Tab.~24 \\
+Reward standardisation & no & [B] Tab.~24 \\
+Entropy coefficient & 0.001 & [B] Tab.~24 \\
+Critic target & 5-step returns from a target critic (soft, $\tau=0.01$) & [B] Tab.~24, [E] \\
+Actor advantage & 5-step advantage, no normalisation & [B] Tab.~24, [E] \\
+PPO & 4 epochs over the whole batch (no minibatches), clip 0.2 & [B] Tab.~24, [E] \\
+Data per update & 10 parallel episodes & [E] \\
+Critic input & global state + agent id (centralised critic) & [B], [E] \\
+Exploration / evaluation & sample the stochastic policy in both & [B] \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+% ---------------------------------------------------------------------
+\subsection{MACPF}
+
+\begin{table}[H]
+\centering\small
+\begin{tabularx}{\textwidth}{l X l}
+\toprule
+Hyper-parameter & Value & Source \\
+\midrule
+Policy and critic networks & FC(64) $\to$ ReLU $\to$ GRU(64) $\to$ FC & [M] App.~C.2 \\
+Correction networks (dependent part) & FC(64) $\to$ ELU $\to$ FC & [M] App.~C.2 \\
+Learning rate & $5\times10^{-4}$ & [M] App.~C.2 \\
+Optimiser & RMSprop ($\alpha=0.99$, $\epsilon=10^{-5}$) & [Mc] \\
+Target networks & hard update every 200 training episodes & [M] App.~C.2 \\
+Entropy temperature $\alpha$ & $0.5\to0.05$ over 200k steps & [M] App.~C.2 \\
+Critic target & soft TD($\lambda$), $\lambda=0.8$ & [Mc] \\
+Mixer & QMIX-style hypernetwork mixer without non-linearity, embedding 64 & [M] App.~C.1, E \\
+Replay, batch & 5000 episodes; 32 episodes; 1 update per episode & [Mc] \\
+Exploration & dependent policy mixed with uniform, $\epsilon$ $1\to0.05$ over 50k steps & [Mc] \\
+Inputs & observation + agent id + last action & [Mc] \\
+Evaluation & greedy, independent policies only & [M], [Mc] \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The MACPF values are its paper's StarCraft (SMAC) settings. Neither the benchmark nor the MACPF
+paper gives LBF values, and we did not tune them.
+
+% ---------------------------------------------------------------------
+\subsection{Adaptive TD($\lambda$) and fixed-$\lambda$ controls}
+
+\begin{table}[H]
+\centering\small
+\begin{tabularx}{\textwidth}{>{\raggedright}p{3.3cm} X >{\raggedright\arraybackslash}p{3.8cm}}
+\toprule
+Hyper-parameter & Value & Source \\
+\midrule
+Estimator $\omega_\phi$ & MLP(64) $\to$ GRU(64) $\to$ linear over [global state, one-hot joint action] & [A] Tab.~3 \\
+$\lambda$ & $\sigma(\omega_\phi(s,a))$ & [A] Sec.~4 \\
+Estimator loss & binary cross-entropy (JS-divergence form); $\mathcal{D}_{on}$ labelled 1, $\mathcal{D}_{off}$ labelled 0; 32 episodes from each per step & [A] eq.~8 \\
+Estimator optimiser & Adam, $10^{-3}$ & [A] Tab.~3 \\
+Buffer ratio $|\mathcal{D}_{off}|/|\mathcal{D}_{on}|$ & 50 & [A] (best ratio) \\
+Targets & $\lambda$-returns with the per-step $\lambda$ & [A] eq.~10 \\
+\addlinespace
+\multicolumn{3}{l}{\emph{QMIX-ATD, QPLEX-ATD}} \\
+$\mathcal{D}_{on}$, $\mathcal{D}_{off}$ & newest 100 episodes of the 5000-episode replay; the rest of the replay & [A], ratio 50 \\
+Estimator schedule & 1 estimator step and a clear of the cached $\lambda$ values every 200 episodes & [A] Alg.~1 (once per target period); 200 = PyMARL target interval used by [A] (ours, since our target is soft) \\
+\addlinespace
+\multicolumn{3}{l}{\emph{MAPPO-ATD}} \\
+$\mathcal{D}_{on}$, $\mathcal{D}_{off}$ & the current batch; the previous 50 batches & [A] Sec.~4.3, ratio 50 (ours: batch-level buffers) \\
+Estimator schedule & 1 estimator step per PPO update (the target critic is updated every update) & (ours, following [A] Alg.~1) \\
+Use of $\lambda$ & critic regresses on ATD $\lambda$-returns; actor advantages unchanged (5-step) & [A] Sec.~4.3 \\
+\addlinespace
+\multicolumn{3}{l}{\emph{All ATD variants}} \\
+Other settings & identical to the base learner, so ATD is the only change & (ours) \\
+\midrule
+QMIX / QPLEX, fixed $\lambda$ & $\lambda$-returns with $\lambda=0.4$ & [A] Tab.~3 (\texttt{td\_lambda} of its baselines) \\
+MAPPO, fixed $\lambda$ & critic $\lambda$-returns with $\lambda=0.95$ & [Y] (GAE $\lambda$) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{Why the fixed-$\lambda$ controls exist.} Base QMIX and QPLEX use 1-step targets and
+base MAPPO uses 5-step targets. ATD therefore changes two things at once: it introduces
+$\lambda$-returns, and it adapts $\lambda$ per state-action pair. The controls isolate the
+second change.
+
+\paragraph{Compute.} Every run used one CPU core. Mean wall time per run, in minutes:
+
+\begin{center}\small
+\begin{tabular}{l c}
+\toprule
+Algorithm & Minutes per run \\
+\midrule
+QMIX & 41 \\
+QMIX-ATD & 48 \\
+QMIX ($\lambda=0.4$) & 44 \\
+QPLEX & 44 \\
+QPLEX-ATD & 49 \\
+QPLEX ($\lambda=0.4$) & 46 \\
+MAPPO & 85 \\
+MAPPO-ATD & 103 \\
+MAPPO ($\lambda=0.95$) & 87 \\
+MACPF & 119 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The full study of 210 runs took about 2.5 days on 4 cores.

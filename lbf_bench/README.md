@@ -199,6 +199,14 @@ and `10x10-3p-3f-2s` (0.81 / 0.79 vs. 0.67 and 0.73 / 0.72 vs. 0.62).
 |---|---|---|
 | ![](../results/lbf/figures/curves_qmix_atd.png) | ![](../results/lbf/figures/curves_qplex_atd.png) | ![](../results/lbf/figures/curves_mappo_atd.png) |
 
+Two consolidated figures put all algorithms on one page:
+* [`curves_all.png`](../results/lbf/figures/curves_all.png) shows every algorithm on every task.
+* [`lambda_all.png`](../results/lbf/figures/lambda_all.png) shows λ for the three ATD learners on one
+  axis.
+
+The LaTeX write-up is in [`report/`](../report/main.pdf). Build it with
+`cd report && latexmk -pdf main.tex`.
+
 ### λ over time
 
 ![adaptive lambda over training](../results/lbf/figures/lambda_over_time.png)
@@ -226,6 +234,23 @@ behaves like the fixed-λ controls:
 * **MAPPO.** The critic already uses 5-step returns, and ATD, λ = 0.95 and the base are statistically
   indistinguishable on all tasks. MAPPO-ATD is slower on `15x15-3p-5f`; there one seed lags for most of
   training (mean 0.69 vs. 0.78, CIs overlap).
+
+**The estimator itself works.** `python -m lbf_bench.atd_diagnostic` (output in
+`results/lbf/atd_diagnostic.json`) trains the same estimator on real `10x10-3p-3f` episodes. D_off comes
+from a uniform policy and D_on from a policy that takes `load` with extra probability p. Held-out
+accuracy after 200 steps:
+
+| p | accuracy after 200 steps |
+|---|---|
+| 0 | 0.52 |
+| 0.05 | 0.51 |
+| 0.1 | 0.66 |
+| 0.2 | 0.87 |
+| 1 | 1.00 |
+
+So it separates clearly different buffers. In training, the recent and old buffers are just too
+similar. QMIX/QPLEX-ATD also get only about 200 estimator steps per run, one per 200 episodes. The
+LaTeX report (`report/`) works through this analysis in more detail.
 
 Whether the estimator separates D_on from D_off better on other domains, or with settings other than the
 ATD paper's table 3 values used here, was not tested.

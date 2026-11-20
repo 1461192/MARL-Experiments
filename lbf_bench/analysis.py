@@ -229,6 +229,87 @@ def lambda_table(data) -> str:
     return "\n".join(lines)
 
 
+YELLOW = "#eda100"                                        # categorical slot 4
+FAMILY_COLOR = {"qmix": BLUE, "qplex": ORANGE, "mappo": AQUA, "macpf": YELLOW}
+VARIANT_LS = {"base": "-", "atd": (0, (5, 2)), "fixed": (0, (1, 1.5))}
+ALL_ALGOS = [("qmix", "base"), ("qmix_atd", "atd"), ("qmix_l0.4", "fixed"),
+             ("qplex", "base"), ("qplex_atd", "atd"), ("qplex_l0.4", "fixed"),
+             ("mappo", "base"), ("mappo_atd", "atd"), ("mappo_l0.95", "fixed"), ("macpf", "base")]
+
+
+def _family(a: str) -> str:
+    return a.split("_")[0]
+
+
+def curves_all(data, path: Path):
+    """Every algorithm on every task in one figure. x = fraction of the algorithm's own training budget
+    (2M steps off-policy, 20M on-policy), so learners with different budgets share an axis. Colour = base
+    algorithm, line style = variant (solid base, dashed ATD, dotted fixed lambda). Mean over seeds only;
+    the per-family figures carry the confidence bands."""
+    tasks = [t for t in TASKS if t in data]
+    fig, axes = plt.subplots(2, 4, figsize=(15, 6.8), constrained_layout=True)
+    axes = axes.ravel()
+    handles = {}
+    for ax, task in zip(axes, tasks):
+        _style(ax)
+        for a, var in ALL_ALGOS:
+            runs = data[task].get(a)
+            if not runs:
+                continue
+            t, m = eval_matrix(runs)
+            (h,) = ax.plot(100 * t / runs[0]["t_max"], m.mean(0), color=FAMILY_COLOR[_family(a)],
+                           ls=VARIANT_LS[var], lw=1.8 if var == "base" else 1.5)
+            handles[a] = h
+        ax.set_title(task, fontsize=10, color=INK)
+        ax.set_ylim(-0.02, 1.02)
+        ax.set_xlim(0, 100)
+        ax.set_xlabel("% of training budget", fontsize=8, color=MUTED)
+        ax.set_ylabel("evaluation return", fontsize=8, color=MUTED)
+    for ax in axes[len(tasks):]:
+        ax.axis("off")
+    order = [a for a, _ in ALL_ALGOS if a in handles]
+    axes[-1].legend([handles[a] for a in order], [ALGOS[a].label for a in order], loc="center",
+                    frameon=False, fontsize=10, ncol=1,
+                    title="mean over 3 seeds\n100% of budget = 2M steps (QMIX,\nQPLEX, MACPF) or 20M (MAPPO)",
+                    title_fontsize=8.5)
+    fig.suptitle("All algorithms on the seven LBF tasks", fontsize=13, color=INK)
+    for ext in ("png", "pdf"):
+        fig.savefig(path.with_suffix("." + ext), dpi=200)
+    plt.close(fig)
+
+
+def lambda_all(data, path: Path):
+    """Adaptive lambda of the three ATD learners in one axes: mean over all tasks and seeds (line) and the
+    range of the per-run means (band), against the fraction of each learner's training budget."""
+    fig, ax = plt.subplots(figsize=(7.5, 4.2), constrained_layout=True)
+    _style(ax)
+    x = np.linspace(0, 100, 201)
+    for a in ATD:
+        rows = []
+        for task in TASKS:
+            for r in data.get(task, {}).get(a, []):
+                lam = np.asarray(r["lam"])
+                rows.append(np.interp(x, 100 * lam[:, 0] / r["t_max"], lam[:, 1]))
+        if not rows:
+            continue
+        rows = np.asarray(rows)
+        c = FAMILY_COLOR[_family(a)]
+        ax.fill_between(x, rows.min(0), rows.max(0), color=c, alpha=0.18, lw=0)
+        ax.plot(x, rows.mean(0), color=c, lw=4 if a == "mappo_atd" else 1.8, zorder=5 - ATD.index(a), label=f"{ALGOS[a].label} ({len(rows)} runs)")
+    ax.axhline(0.5, color=MUTED, lw=0.8, ls=":", zorder=1)
+    ax.set_ylim(0, 1)
+    ax.set_xlim(0, 100)
+    ax.set_xlabel("% of training budget (2M steps for QMIX/QPLEX-ATD, 20M for MAPPO-ATD)", fontsize=9,
+                  color=MUTED)
+    ax.set_ylabel("mean λ in training batch", fontsize=9, color=MUTED)
+    ax.legend(loc="upper right", frameon=False, fontsize=9,
+              title="line: mean over 7 tasks × 3 seeds\nband: min–max of per-run means", title_fontsize=8)
+    ax.set_title("Adaptive λ over training, all ATD learners", fontsize=11, color=INK)
+    for ext in ("png", "pdf"):
+        fig.savefig(path.with_suffix("." + ext), dpi=200)
+    plt.close(fig)
+
+
 def main(argv=None):
     p = argparse.ArgumentParser()
     p.add_argument("--root", default="results/lbf")
@@ -244,6 +325,8 @@ def main(argv=None):
                    f"{ALGOS[base].label}: base vs adaptive TD(λ) vs fixed λ")
     lambda_figure(data, fig_dir / "lambda_over_time.png")
     accuracy_figure(data, fig_dir / "atd_estimator_accuracy.png")
+    curves_all(data, fig_dir / "curves_all.png")
+    lambda_all(data, fig_dir / "lambda_all.png")
     md = ["# LBF results\n", "## Main algorithms\n", tables(data, MAIN)]
     for base, algos in FAMILIES.items():
         md += [f"## {ALGOS[base].label}: adaptive vs fixed λ\n", tables(data, algos)]

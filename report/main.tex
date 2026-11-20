@@ -1,0 +1,42 @@
+% Standalone wrapper for the LBF results section and the hyper-parameter appendix.
+% Build:  cd report && latexmk -pdf main.tex
+% To use the sections in another document, copy the preamble packages below and
+%   \input{results}            % Results and analysis
+%   \appendix \input{appendix_hyperparameters}
+% with \graphicspath pointing at results/lbf/figures/.
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage[font=small,labelfont=bf]{caption}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[hidelinks]{hyperref}
+\graphicspath{{../results/lbf/figures/}}
+\setlength{\emergencystretch}{2em}
+
+% 0.48\ci{0.05} typesets a mean with its 95% confidence half-width
+\newcommand{\ci}[1]{\,{\scriptsize$\pm$#1}}
+
+\title{Adaptive TD($\lambda$) on Level-Based Foraging:\\ Results and Hyper-parameters}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\input{results}
+
+\appendix
+\input{appendix_hyperparameters}
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+\end{document}
